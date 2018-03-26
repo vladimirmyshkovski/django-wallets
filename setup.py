@@ -45,21 +45,21 @@ readme = open('README.rst').read()
 history = open('HISTORY.rst').read().replace('.. :changelog:', '')
 
 setup(
-    name='wallets',
+    name='django-wallets',
     version=version,
     description="""BTC, LTC, DASH, DOGE wallets for each user with withdraw with webhook""",
     long_description=readme + '\n\n' + history,
     author='Vladimir Myshkovski',
     author_email='vladimirmyshkovski@gmail.com',
-    url='https://github.com/narnikgamarnikus/wallets',
+    url='https://github.com/narnikgamarnikus/django-wallets',
     packages=[
-        'wallets',
+        'django-wallets',
     ],
     include_package_data=True,
     install_requires=[],
     license="MIT",
     zip_safe=False,
-    keywords='wallets',
+    keywords='django-wallets',
     classifiers=[
         'Development Status :: 3 - Alpha',
         'Framework :: Django',

@@ -2,28 +2,28 @@
 Django wallets
 =============================
 
-.. image:: https://badge.fury.io/py/wallets.svg
-    :target: https://badge.fury.io/py/wallets
+.. image:: https://badge.fury.io/py/django-wallets.svg
+    :target: https://badge.fury.io/py/django-wallets
 
-.. image:: https://travis-ci.org/narnikgamarnikus/wallets.svg?branch=master
-    :target: https://travis-ci.org/narnikgamarnikus/wallets
+.. image:: https://travis-ci.org/narnikgamarnikus/django-wallets.svg?branch=master
+    :target: https://travis-ci.org/narnikgamarnikus/django-wallets
 
-.. image:: https://codecov.io/gh/narnikgamarnikus/wallets/branch/master/graph/badge.svg
-    :target: https://codecov.io/gh/narnikgamarnikus/wallets
+.. image:: https://codecov.io/gh/narnikgamarnikus/django-wallets/branch/master/graph/badge.svg
+    :target: https://codecov.io/gh/narnikgamarnikus/django-wallets
 
 BTC, LTC, DASH, DOGE wallets for each user with withdraw with webhook
 
 Documentation
 -------------
 
-The full documentation is at https://wallets.readthedocs.io.
+The full documentation is at https://django-wallets.readthedocs.io.
 
 Quickstart
 ----------
 
 Install Django wallets::
 
-    pip install wallets
+    pip install django-wallets
 
 Add it to your `INSTALLED_APPS`:
 
