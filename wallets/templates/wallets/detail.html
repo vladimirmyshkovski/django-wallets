@@ -1,0 +1,38 @@
+{% extends 'wallets/base.html' %}
+{% load static %}
+{% block content %}
+<div style="text-align: center">
+	<img src="/static/img/{{ object.coin_symbol }}.png">
+
+	<h1>{{ object.coin_symbol | upper }} wallet</h1>
+
+	<h3>Total balance: {{ object.balance }}</h3>
+
+	<div>
+		<p id="qrCode"></p>
+		<br>
+		<br>
+		<input id="address" type="text" value="{{ object.address }}">
+        <br>
+        <br>
+        <button type="button" data-clipboard-target="#address">Copy address</button>		
+	</div>
+
+	<form action="{% url 'wallets:withdraw' object.coin_symbol object.address %}" method="post" style="margin-top: 100px; margin-bottom: 100px">
+		{% csrf_token %}
+		{{ form }}
+		<button type="submit">Submit</button>
+	</form>
+</div>
+{% endblock content %}
+{% block extra_js %}
+	{% block javascript %}
+		<script src="{% static 'js/clipboard.min.js' %}" type="text/javascript"></script>
+		<script src="{% static 'js/qr-code.min.js' %}" type="text/javascript"></script>
+
+		<script type="text/javascript">
+			new QRCode(document.getElementById("qrCode"), "{{ object.address }}");
+			new ClipboardJS('button');
+		</script>
+    {% endblock javascript %}
+{% endblock extra_js %}

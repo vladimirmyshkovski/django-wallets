@@ -1,0 +1,21 @@
+{% extends 'wallets/base.html' %}
+{% block content %}
+{% load static %}
+	
+	<img src="/static/img/{{ symbol }}.png">
+
+	<h1>{{ symbol | upper }} wallet</h1>
+
+	<h3>Total balance: {{ total_balance }}</h3>
+
+	{% for address in list %}
+
+		<div style="border: 1px solid black; padding: 15px; margin-top: 15px; margin-bottom: 15px; text-align: right;">
+			<p>{{ address }}</p> 
+			<p>Balance: {{ address.balance }}</p>
+			<p><a href="{% url 'wallets:detail' symbol address.address %}">Go to address</a></p>
+		</div>
+
+	{% endfor %}
+
+{% endblock content %}
