@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+    #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 import os
 import re
@@ -53,10 +53,19 @@ setup(
     author_email='vladimirmyshkovski@gmail.com',
     url='https://github.com/narnikgamarnikus/django-wallets',
     packages=[
-        'django-wallets',
+        'wallets',
     ],
     include_package_data=True,
-    install_requires=[],
+    install_requires=[
+        'bitcoin',
+        'blockcypher',
+        'djangorestframework',
+        'django-model-utils',
+        'requests',
+        'django-generic-m2m',
+        'psycopg2-binary',
+
+    ],
     license="MIT",
     zip_safe=False,
     keywords='django-wallets',

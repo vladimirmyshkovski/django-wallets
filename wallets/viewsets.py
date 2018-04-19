@@ -11,13 +11,10 @@ from rest_framework import mixins
 from rest_framework.decorators import detail_route, list_route
 
 from .utils import decode_signin, extract_webhook_id, unsubscribe_from_webhook
-from .validators import withdraw_schema
-from cerberus import Validator
 
 
 from rest_framework.permissions import IsAuthenticated
 
-v = Validator()
 
 
 class WebhookViewSet(viewsets.ViewSet):
@@ -80,23 +77,6 @@ class BaseViewSet(mixins.CreateModelMixin,
                 pass
         return Response({'status': 'Something wrong, try again later'}, status=status.HTTP_400_BAD_REQUEST)
 
-        '''
-        if not v.validate(request.data, withdraw_schema):
-            return Response(v.errors, status=status.HTTP_400_BAD_REQUEST)
-
-        try:
-            obj = self.get_object()
-            
-            address = request.data['address']
-            amount = request.data['amount']            
-            
-            transaction = obj.spend(address, float(amount))
-            
-            content = 'Transaction {} successfully created'.foramt(transaction)
-        except:
-            return Response('Something wrong, try again later', status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-        return Response(content, status=status.HTTP_201_CREATED)
-        '''
 
     @list_route(methods=['post'])
     def webhook(self, request):

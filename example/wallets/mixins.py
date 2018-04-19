@@ -1,23 +1,33 @@
 from django.core.exceptions import PermissionDenied
 from django.contrib.auth.mixins import LoginRequiredMixin
-from .models import Btc, Ltc, Doge, Dash
+from .models import Bcy, Btc, Ltc, Doge, Dash
 
 
-class OwnerPermissions(LoginRequiredMixin):
-
+class OwnerPermissionsMixin(LoginRequiredMixin):
+	'''
     def get_object(self, *args, **kwargs):
-        obj = super(OwnerPermissions, self).get_object(*args, **kwargs)
-        if obj.user != self.request.user:
-            raise PermissionDenied()
-        else:
-            return obj
+    	obj = super(OwnerPermissionsMixin, self).get_object(*args, **kwargs)
+    	print(obj)
+    	if obj.user != self.request.user:
+    		raise PermissionDenied()
+    	else:
+    		return obj
+	'''
 
+	def dispatch(self, request, *args, **kwargs):
+		if hasattr(self, 'get_object'):
+			obj = self.get_object()
+			if obj.user != self.request.user:
+				raise PermissionDenied()
+		return super(OwnerPermissionsMixin, self).dispatch(request, *args, **kwargs)	
 
-class CheckWallet():
+class CheckWalletMixin():
 	
 	def check_wallet(self, symbol):
 		if symbol == 'btc':
 			model = Btc
+		elif symbol == 'bcy':
+			return Bcy
 		elif symbol == 'ltc':
 			model = Ltc
 		elif symbol == 'dash':

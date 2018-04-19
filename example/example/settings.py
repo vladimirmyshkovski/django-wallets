@@ -39,7 +39,7 @@ INSTALLED_APPS = [
     'wallets',
     'rest_framework',
     'rest_framework.authtoken',
-
+    'gm2m',
     # if your app has other dependencies that need to be added to the site
     # they should be added here
 ]

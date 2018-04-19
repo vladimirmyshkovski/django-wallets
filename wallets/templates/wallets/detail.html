@@ -18,7 +18,7 @@
         <button type="button" data-clipboard-target="#address">Copy address</button>		
 	</div>
 
-	<form action="{% url 'wallets:withdraw' object.coin_symbol object.address %}" method="post" style="margin-top: 100px; margin-bottom: 100px">
+	<form action="{#% url 'wallets:withdraw' object.coin_symbol object.address %#}" method="post" style="margin-top: 100px; margin-bottom: 100px">
 		{% csrf_token %}
 		{{ form }}
 		<button type="submit">Submit</button>

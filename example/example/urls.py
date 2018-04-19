@@ -21,7 +21,7 @@ from rest_framework.authtoken import views
 
 urlpatterns = [
     url(r'^admin/', admin.site.urls),
-    url(r'^api/wallets/', include('wallets.api_urls', namespace='api_wallets')),
+    #url(r'^api/wallets/', include('wallets.api_urls', namespace='api_wallets')),
     url(r'^api/token-auth/', views.obtain_auth_token),
     url(r'', include('wallets.urls', namespace='wallets')),
 ]

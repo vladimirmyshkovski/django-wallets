@@ -4,8 +4,8 @@ from .models import Btc, Ltc, Dash, Doge#, Bcy
 
 class WithdrawSerializer(serializers.Serializer):
 
-	amount = serializers.IntegerField()
-	address = serializers.CharField()
+	amount = serializers.IntegerField(required=True)
+	address = serializers.CharField(required=True)
 
 
 class BtcSerializer(serializers.ModelSerializer):

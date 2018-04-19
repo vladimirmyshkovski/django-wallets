@@ -6,5 +6,5 @@ from django.conf.urls import url, include
 from wallets.urls import urlpatterns as wallets_urls
 
 urlpatterns = [
-    url(r'^', include(wallets_urls)),
+    url(r'^wallets/', include((wallets_urls, 'wallets'), namespace='wallets')),
 ]
