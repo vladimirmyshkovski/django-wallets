@@ -275,21 +275,17 @@ class WalletsWebhookView(View):
                 to_addresses = sign['to_addresses'],
                 symbol = sign['symbol'],
                 event = sign['event'],
-                transaction_id = sign['transaction_id']
+                transaction_id = sign['transaction_id'],
+                payload = sign['payload']
             )
             webhook_id = extract_webhook_id(signature, sign['symbol'])
             if webhook_id:
                 unsubscribe = unsubscribe_from_webhook(webhook_id, sign['symbol'])
         except BadSignature:
-            print('123')
             pass
         except SignatureExpired:
-            print('321')
             pass
         return JsonResponse({}, status=200)
-
-    def get(self, request, *args, **kwargs):
-        return redirect(reverse('wallets:all'))
 
     @method_decorator(csrf_exempt)
     def dispatch(self, request, *args, **kwargs):

@@ -62,7 +62,7 @@ setup(
         'djangorestframework',
         'django-model-utils',
         'requests',
-        'django-generic-m2m',
+        'django-gm2m',
         'psycopg2-binary',
 
     ],

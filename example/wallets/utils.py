@@ -48,13 +48,17 @@ def from_satoshi(amount):
 	else:
 		raise ValueError('Amount must be integer')
 
-def set_webhook(from_address, to_address, transaction_id, coin_symbol, event='confirmed-tx'):
+def set_webhook(from_address, to_address, transaction_id, coin_symbol, payload=None, event='confirmed-tx'):
+    if payload:
+    	payload = signing.dumps(payload)
+    
     signature = signing.dumps({
         'from_address': from_address,
         'to_addresses': to_address,
         'symbol': coin_symbol,
         'event': event,
-        'transaction_id': transaction_id
+        'transaction_id': transaction_id,
+        'payload': payload
         })
     webhook = blockcypher.subscribe_to_address_webhook(
         callback_url='https://{}/wallets/webhook/{}/'.format(domain, signature),
@@ -158,6 +162,7 @@ class GetWebhook(object):
 		self.symbol = None
 		self.event = None
 		self.transaction_id = None
+		self.paylaod = {}
 		self.sender_wallet = None
 		self.receiver_wallets = []
 		self.parse_signal()
@@ -174,7 +179,9 @@ class GetWebhook(object):
 			self.event = self.signal['event']
 		if 'transaction_id' in self.signal:
 			self.transaction_id = self.signal['transaction_id']
-	
+		if 'paylaod' in self.signal:
+			self.paylaod = self.signal['paylaod']
+
 	def get_object(self):
 		if self.symbol:
 			wallet_content_type = ContentType.objects.get(app_label="wallets", model=self.symbol.lower())

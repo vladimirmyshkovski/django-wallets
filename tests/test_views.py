@@ -543,7 +543,8 @@ class TestWalletsWebhookView(TestCase):
 				'to_addresses': ['FAKE_TO_ADDRESS'],
 				'symbol': 'FAKE_SYMBOL',
 				'event': 'FAKE_EVENT',
-				'transaction_id': 'FAKE_TRANSACTION_ID'
+				'transaction_id': 'FAKE_TRANSACTION_ID',
+				'payload': None
 			}
 		self.fake_signature = signing.dumps(self.fake_data)
 
@@ -552,18 +553,19 @@ class TestWalletsWebhookView(TestCase):
 				'to_addresses': ['CDHsAcdbWvwtBaM9urmRU2VpQ3yMXfoUjy'],
 				'symbol': 'bcy',
 				'event': 'confirmed-tx',
-				'transaction_id': '0e497d00057a2ae14e6e3f0d413173dbfa9f2f0a05114764aeaa9e88fa4a5d05'
+				'transaction_id': '0e497d00057a2ae14e6e3f0d413173dbfa9f2f0a05114764aeaa9e88fa4a5d05',
+				'payload': None
 			}
 		self.signature = signing.dumps(self.data)
 
 	def test_post_with_invalid_signature(self):
-		resp = self.post('/wallets/webhook/{}/'.format(self.fake_signature))
-		self.response_200(resp)
-		#self.assertRaises(
-		#	AssertionError,
-		#	self.post,
-		#	'/wallets/webhook/{}/'.format(self.fake_signature)
-		#)
+		#resp = self.post('/wallets/webhook/{}/'.format(self.fake_signature))
+		#self.response_200(resp)
+		self.assertRaises(
+			AssertionError,
+			self.post,
+			'/wallets/webhook/{}/'.format(self.fake_signature)
+		)
 	
 	def test_post_with_valid_signature(self):
 		resp = self.post('/wallets/webhook/{}/'.format(self.signature))
@@ -575,7 +577,8 @@ class TestWalletsWebhookView(TestCase):
 				'to_addresses': ['CDHsAcdbWvwtBaM9urmRU2VpQ3yMXfoUjy'],
 				'symbol': 'bcy',
 				'event': 'confirmed-tx',
-				'transaction_id': '1e497d00057a2ae14e6e3f0d413173dbfa9f2f0a05114764aeaa9e88fa4a5d05'
+				'transaction_id': '1e497d00057a2ae14e6e3f0d413173dbfa9f2f0a05114764aeaa9e88fa4a5d05',
+				'payload': None
 			}
 		signature = signing.dumps(self.data)
 		resp = self.post('/wallets/webhook/{}/'.format(signature))
