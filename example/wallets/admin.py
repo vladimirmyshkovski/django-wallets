@@ -5,7 +5,7 @@ class BaseWalletAdmin(admin.ModelAdmin):
 	list_display = ['user', 'address']
 	exclude = ['private']
 	readonly_fields = ['public', 'address', 'wif', 'coin_symbol','coin_name']
-
+'''
 @admin.register(Btc)
 class BtcAdmin(BaseWalletAdmin):
 	pass
@@ -21,3 +21,4 @@ class DashAdmin(BaseWalletAdmin):
 @admin.register(Doge)
 class DogeAdmin(BaseWalletAdmin):
 	pass
+'''

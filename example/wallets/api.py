@@ -28,17 +28,19 @@ def not_simple_spend(from_privkey, to_addresses, to_satoshis, change_address=Non
     assert len(to_addresses) == len(to_satoshis)
     for i in to_satoshis:
         assert type(i) is int, i
-    
+
+
     if privkey_is_compressed:
         from_pubkey = compress(privkey_to_pubkey(from_privkey))
     else:
         from_pubkey = privkey_to_pubkey(from_privkey)
+            
     from_address = pubkey_to_address(
             pubkey=from_pubkey,
             # this method only supports paying from pubkey anyway
             magicbyte=COIN_SYMBOL_MAPPINGS[coin_symbol]['vbyte_pubkey'],
             )
-    
+
     inputs = [{'address': from_address}, ]
     logger.info('inputs: %s' % inputs)
     outputs = []

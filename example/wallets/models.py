@@ -23,19 +23,23 @@ from gm2m import GM2MField
 @python_2_unicode_compatible
 class BaseWallet(TimeStampedModel, SoftDeletableModel):
 
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        related_name='%(class)s_wallets',
+        on_delete=models.CASCADE
+    )
+
     private = models.CharField(max_length=150, unique=True)
     public = models.CharField(max_length=150, unique=True)
     address = models.CharField(max_length=150, unique=True)
     wif = models.CharField(max_length=150, unique=True)
 
-    #received_invoices = GenericRelation('wallets.Invoice', related_query_name='received_invoices')
-    #sended_invoices = GenericRelation('wallets.Invoice')
     sended_invoices = GenericRelation(
         'wallets.Invoice',
         content_type_field='sender_wallet_type',
         object_id_field='sender_wallet_id',
     )
-
+    
     class Meta:
         abstract = True
 
@@ -47,6 +51,17 @@ class BaseWallet(TimeStampedModel, SoftDeletableModel):
 
     def get_absolute_url(self):
         return reverse('wallets:detail', kwargs={'wallet': self.coin_symbol, 'address': self.address})
+    
+    @cached_property
+    def coin_symbol(self):
+        coin_symbol = self.__class__.get_coin_symbol()
+        return coin_symbol
+
+    @cached_property
+    def coin_name(self):
+        coin_name = self.__class__.get_coin_name()
+        return coin_name
+
 
     def spend(self, addresses, amounts):
         new_transaction = api.not_simple_spend(
@@ -72,6 +87,7 @@ class BaseWallet(TimeStampedModel, SoftDeletableModel):
     def set_webhook(self, to_addresses, transaction, payload = None, event = 'confirmed-tx'):
         if payload:
             payload = signature.dumps(payload)
+
         signature = signing.dumps({
             'from_address': self.address,
             'to_addresses': to_addresses,
@@ -80,6 +96,7 @@ class BaseWallet(TimeStampedModel, SoftDeletableModel):
             'transaction_id': transaction,
             'payload': payload
             })
+        
         webhook = blockcypher.subscribe_to_address_webhook(
             callback_url='https://{}/wallets/webhook/{}/'.format(domain, signature),
             subscription_address=self.address,
@@ -88,26 +105,21 @@ class BaseWallet(TimeStampedModel, SoftDeletableModel):
             api_key=settings.BLOCKCYPHER_API_KEY
         )
         return webhook
-    '''
-    @property
-    def rate(self):
-        response = requests.get('https://api.coinmarketcap.com/v1/ticker/{}/'.format(self.coin_name))
-        json_response = response.json()
-        return json_response[0]['price_usd']
-    '''
 
     @cached_property
     def address_details(self):
-        return blockcypher.get_address_details(self.address, coin_symbol=self.coin_symbol)
+        details = blockcypher.get_address_details(self.address, coin_symbol=self.coin_symbol)
+        return details
 
     @cached_property
     def overview(self):
-        return blockcypher.get_address_overview(self.address, coin_symbol=self.coin_symbol)
+        overview = blockcypher.get_address_overview(self.address, coin_symbol=self.coin_symbol)
+        return overview
 
     @cached_property
     def balance(self):
         overview = blockcypher.get_address_overview(self.address, coin_symbol=self.coin_symbol)
-        return overview['balance']
+        return from_satoshi(overview['balance'])
 
     @cached_property
     def transactions(self):
@@ -116,7 +128,8 @@ class BaseWallet(TimeStampedModel, SoftDeletableModel):
 
     @staticmethod
     def transaction_details(tx_ref, coin_symbol='btc'):
-        return blockcypher.get_transaction_details(tx_ref, coin_symbol)
+        details = blockcypher.get_transaction_details(tx_ref, coin_symbol)
+        return details
 
     def create_invoice(self, wallets, amounts):
         invoice = Invoice.objects.create(
@@ -125,20 +138,35 @@ class BaseWallet(TimeStampedModel, SoftDeletableModel):
         )
         invoice.receiver_wallet_object = wallets
         invoice.save()
-        
         return invoice
 
     @classmethod
     def get_coin_symbol(cls):
-        for field in cls._meta.fields:
-            if field.name == 'coin_symbol':
-                return field.default
+        if cls.__name__.lower().startswith('btc'):    
+            coin_symbol = 'btc'
+        elif cls.__name__.lower().startswith('ltc'):
+            coin_symbol = 'ltc'
+        elif cls.__name__.lower().startswith('dash'):
+            coin_symbol = 'dash'
+        elif cls.__name__.lower().startswith('doge'):
+            coin_symbol = 'doge'
+        elif cls.__name__.lower().startswith('bcy'):
+            coin_symbol = 'bcy'        
+        return coin_symbol
 
     @classmethod
     def get_coin_name(cls):
-        for field in cls._meta.fields:
-            if field.name == 'coin_name':
-                return field.default
+        if cls.__name__.lower().startswith('btc'):    
+            coin_name = 'bitcoin'
+        elif cls.__name__.lower().startswith('ltc'):
+            coin_name = 'litecoin'
+        elif cls.__name__.lower().startswith('dash'):
+            coin_name = 'dash'
+        elif cls.__name__.lower().startswith('doge'):
+            coin_name = 'dogecoin'
+        elif cls.__name__.lower().startswith('bcy'):
+            coin_name = 'blockcypher'
+        return coin_name
 
     @classmethod
     def get_rate(cls):
@@ -147,85 +175,109 @@ class BaseWallet(TimeStampedModel, SoftDeletableModel):
         json_response = response.json()
         return json_response[0]['price_usd']
 
+    @cached_property
+    def total_balance(self):
+        balance = 0
+        
+        related_name = getattr(self.user, '{}_wallets'.format(self.coin_symbol))
+        queryset = getattr(related_name,'all')
+
+        for address in queryset():
+            balance += address.balance
+        return balance        
+
 
 @python_2_unicode_compatible
 class Btc(BaseWallet):
+    pass
 
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, related_name="btc_wallets", on_delete=models.CASCADE)
-    coin_symbol = models.CharField(max_length=5, default='btc')
-    coin_name = models.CharField(max_length=10, default='bitcoin')
 
+    #user = models.ForeignKey(settings.AUTH_USER_MODEL, related_name="btc_wallets", on_delete=models.CASCADE)
+    #coin_symbol = models.CharField(max_length=5, default='btc')
+    #coin_name = models.CharField(max_length=10, default='bitcoin')
+    '''
     @cached_property
     def total_balance(self):
         balance = 0
         for address in self.user.btc_wallets.all():
             balance += address.balance
         return balance
-
+    '''
 
 @python_2_unicode_compatible
 class Doge(BaseWallet):
+    pass
+    #def __init__(self):
+    #    super(Doge, self).__init__()
 
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, related_name="doge_wallets", on_delete=models.CASCADE)
-    coin_symbol = models.CharField(max_length=5, default='doge')
-    coin_name = models.CharField(max_length=10, default='dogecoin')
-
+    #user = models.ForeignKey(settings.AUTH_USER_MODEL, related_name="doge_wallets", on_delete=models.CASCADE)
+    #coin_symbol = models.CharField(max_length=5, default='doge')
+    #coin_name = models.CharField(max_length=10, default='dogecoin')
+    '''
     @cached_property
     def total_balance(self):
         balance = 0
         for address in self.user.doge_wallets.all():
             balance += address.balance
         return balance
-
+    '''
 
 @python_2_unicode_compatible
 class Ltc(BaseWallet):
+    pass
+    #def __init__(self):
+    #    super(Ltc, self).__init__()
 
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, related_name="ltc_wallets", on_delete=models.CASCADE)
-    coin_symbol = models.CharField(max_length=5, default='ltc')
-    coin_name = models.CharField(max_length=10, default='litecoin')
-
+    #user = models.ForeignKey(settings.AUTH_USER_MODEL, related_name="ltc_wallets", on_delete=models.CASCADE)
+    #coin_symbol = models.CharField(max_length=5, default='ltc')
+    #coin_name = models.CharField(max_length=10, default='litecoin')
+    '''
     @cached_property
     def total_balance(self):
         balance = 0
         for address in self.user.ltc_wallets.all():
             balance += address.balance
         return balance
-
+    '''
 
 @python_2_unicode_compatible
 class Dash(BaseWallet):
+    pass
+    #def __init__(self):
+    #    super(Dash, self).__init__()
 
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, related_name="dash_wallets", on_delete=models.CASCADE)
-    coin_symbol = models.CharField(max_length=5, default='dash')
-    coin_name = models.CharField(max_length=10, default='dash')
-
+    #user = models.ForeignKey(settings.AUTH_USER_MODEL, related_name="dash_wallets", on_delete=models.CASCADE)
+    #coin_symbol = models.CharField(max_length=5, default='dash')
+    #coin_name = models.CharField(max_length=10, default='dash')
+    '''
     @cached_property
     def total_balance(self):
         balance = 0
         for address in self.user.dash_wallets.all():
             balance += address.balance
         return balance
-
+    '''
 
 @python_2_unicode_compatible
 class Bcy(BaseWallet):
-
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, related_name="bcy_wallets", on_delete=models.CASCADE)
-    coin_symbol = models.CharField(max_length=5, default='bcy')
-    coin_name = models.CharField(max_length=10, default='bcy')
+    pass
+    #def __init__(self):
+    #    super(Bcy, self).__init__()
+    #user = models.ForeignKey(settings.AUTH_USER_MODEL, related_name="bcy_wallets", on_delete=models.CASCADE)
+    #coin_symbol = models.CharField(max_length=5, default='bcy')
+    #coin_name = models.CharField(max_length=10, default='bcy')
 
     @property
     def rate(self):
         return 0
-
+    '''
     @cached_property
     def total_balance(self):
         balance = 0
         for address in self.user.bcy_wallets.all():
             balance += address.balance
         return balance        
-
+    '''
 
 @python_2_unicode_compatible
 class Invoice(models.Model):

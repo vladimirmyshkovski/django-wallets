@@ -127,11 +127,14 @@ class WalletsDetailView(BaseWalletMixin, FormMixin, DetailView):
             return self.form_invalid(form)        
 
     def get_form(self):
-        obj = self.object
-        return self.form_class(
-            data = self.request.POST,
-            obj = obj
-        )
+        if self.request.POST:
+            return self.form_class(
+                data = self.request.POST,
+                obj = self.object
+            )
+        else:
+            return self.form_class
+
 
     def form_valid(self, form):
         transaction = form.spend()

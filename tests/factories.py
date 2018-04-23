@@ -27,9 +27,6 @@ class BtcFactory(factory.django.DjangoModelFactory):
 	wif = factory.Sequence(
 		lambda n: 'KxeXM1gzy5PMJ47orJiZrBK89DycjPxbq7GVS1KcV7UKAFgFTQJx{}'.format(n))
 	
-	coin_symbol = 'btc'
-	coin_name = 'bitcoin'
-	
 	class Meta:
 		model = models.Btc
 
@@ -46,9 +43,6 @@ class LtcFactory(factory.django.DjangoModelFactory):
 		lambda n: '02b9d6ef88a28e865f0c1143c6158de5f3c6399585bf531fa4fa686d48c7d8f99b{}'.format(n))
 	wif = factory.Sequence(
 		lambda n: 'T5zJ18AZ9bwRCnA2ipng9YHANfAjZwhGvmRn6uxyoayatQ34aWft{}'.format(n))
-	
-	coin_symbol = 'ltc'
-	coin_name = 'litecoin'
 
 	class Meta:
 		model = models.Ltc
@@ -66,9 +60,6 @@ class DashFactory(factory.django.DjangoModelFactory):
 		lambda n: '03afe0b3723958003ffd5599a92df93393ddc7903b7358b695d8c4d1212e5ab7cf{}'.format(n))
 	wif = factory.Sequence(
 		lambda n: 'XFrAdirzUf8qSjWNetnL2X3mve1CL8G4Cpqnc7MPYxnhpSysiXDE{}'.format(n))
-	
-	coin_symbol = 'dash'
-	coin_name = 'dash'
 
 	class Meta:
 		model = models.Dash
@@ -86,9 +77,6 @@ class DogeFactory(factory.django.DjangoModelFactory):
 		lambda n: '02856bd93edf5088891c801fd8eba4244a2a2c2dbfbfa06d3fc6ef9439ed6daefc{}'.format(n))
 	wif = factory.Sequence(
 		lambda n: 'QUHBZKbsTZEuqUBb98X2obFpRY9TXy19sR5N4jzz2Ka2gm6n5JtE{}'.format(n))
-	
-	coin_symbol = 'doge'
-	coin_name = 'dogecoin'
 
 	class Meta:
 		model = models.Doge
@@ -106,9 +94,6 @@ class BcyFactory(factory.django.DjangoModelFactory):
 		lambda n: '0288aae38aec430f0042d4886c913bbedc29a66d23990d684040bc2d258742814b{}'.format(n))
 	wif = factory.Sequence(
 		lambda n: 'Bv7M7hU3Z77zqkFmKoorhPwd2L3HAWHb1oxb1vDyVMjLCY39iNxR{}'.format(n))
-	
-	coin_symbol = 'bcy'
-	coin_name = 'bcy'
 
 	class Meta:
 		model = models.Bcy

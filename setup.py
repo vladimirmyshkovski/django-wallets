@@ -57,11 +57,12 @@ setup(
     ],
     include_package_data=True,
     install_requires=[
-        'bitcoin',
+        #'python-dateutil==2.2',
+        #'bitcoin==1.1.39',
         'blockcypher',
         'djangorestframework',
         'django-model-utils',
-        'requests',
+        #'requests==2.4.3',
         'django-gm2m',
         'psycopg2-binary',
 

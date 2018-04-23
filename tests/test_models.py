@@ -584,7 +584,7 @@ class TestBcy(TestCase):
 		)
 		self.assertEqual(
 			self.bcy.coin_name,
-			'bcy'
+			'blockcypher'
 		)
 
 	def test_get_absolute_url(self):
