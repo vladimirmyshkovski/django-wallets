@@ -8,6 +8,7 @@ import blockcypher
 from django.core.signing import BadSignature, SignatureExpired
 from django.urls.exceptions import NoReverseMatch
 from django.core import signing
+from guardian.shortcuts import assign_perm
 
 
 class TestAllUserWalletsList(TestCase):
@@ -695,13 +696,15 @@ class TestInvoiceDetailView(TestCase):
 			)
 		self.btc_invoice.receiver_wallet_object.add(self.btc)
 		self.btc_invoice.save()
-		
+		assign_perm('view_invoice', self.user, self.btc_invoice)
+
 		self.ltc_invoice = factories.LtcInvoiceFactory(
 			sender_wallet_object = self.ltc,
 			amount = [1]
 			)
 		self.ltc_invoice.receiver_wallet_object.add(self.ltc)
 		self.ltc_invoice.save()
+		assign_perm('view_invoice', self.user, self.ltc_invoice)		
 
 		self.dash_invoice = factories.DashInvoiceFactory(
 			sender_wallet_object = self.dash,
@@ -709,6 +712,7 @@ class TestInvoiceDetailView(TestCase):
 			)
 		self.dash_invoice.receiver_wallet_object.add(self.dash)
 		self.dash_invoice.save()
+		assign_perm('view_invoice', self.user, self.dash_invoice)
 
 		self.doge_invoice = factories.DogeInvoiceFactory(
 			sender_wallet_object = self.doge,
@@ -716,6 +720,7 @@ class TestInvoiceDetailView(TestCase):
 			)
 		self.doge_invoice.receiver_wallet_object.add(self.doge)
 		self.doge_invoice.save()
+		assign_perm('view_invoice', self.user, self.doge_invoice)
 
 	def test_redirect_if_not_logged_in(self):
 		resp = self.get('/wallets/invoices/1/')
@@ -770,7 +775,7 @@ class TestInvoiceDetailView(TestCase):
 			password='password'
 		)
 		resp = self.get('/wallets/invoices/{}/'.format(self.btc_invoice.pk))
-		self.response_403(resp)		
+		self.response_403(resp)
 	
 
 class TestInvoicePayView(TestCase):
@@ -782,6 +787,7 @@ class TestInvoicePayView(TestCase):
 			sender_wallet_object = self.btc,
 			amount = [1]
 			)
+		assign_perm('pay_invoice', self.user, self.btc_invoice)
 		self.btc_invoice.receiver_wallet_object.add(self.btc)
 		self.btc_invoice.save()
 		api.not_simple_spend = mock.MagicMock(return_value='7981c7849294648c1e79dd16077a388b808fcf8c20035aec7cc5315b37dacfee')
@@ -789,7 +795,11 @@ class TestInvoicePayView(TestCase):
 
 	def test_redirect_if_not_logged_in(self):
 		resp = self.get('/wallets/invoices/{}/_pay/'.format(self.btc_invoice.pk))
-		self.response_403(resp)
+		self.assertRedirects(
+			resp,
+			'/accounts/login/?next=/wallets/invoices/{}/_pay/'.format(self.btc_invoice.pk),
+			fetch_redirect_response=False
+		)
 
 	def test_success_if_logged_in(self):
 		login = self.client.login(username = self.user.username, password = 'password')

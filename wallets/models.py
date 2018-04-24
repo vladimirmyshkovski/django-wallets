@@ -236,6 +236,12 @@ class Invoice(models.Model):
 
     is_paid = models.BooleanField(default=False)
 
+    class Meta:
+        permissions = (
+            ('view_invoice', 'Can view invoice'),
+            ('pay_invoice', 'Can pay invoice'),
+        )    
+
 
     def __init__(self, *args, **kwargs):
         super(Invoice, self).__init__(*args, **kwargs)

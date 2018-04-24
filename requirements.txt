@@ -1,10 +1,16 @@
 
 # Additional requirements go here
 
-blockcypher # https://github.com/blockcypher/blockcypher-python
-requests # https://github.com/requests/requests
-django-model-utils # https://github.com/jazzband/django-model-utils
+#blockcypher # https://github.com/blockcypher/blockcypher-python
+#requests # https://github.com/requests/requests
+#django-model-utils # https://github.com/jazzband/django-model-utils
 # django-environ==0.4.4  # https://github.com/joke2k/django-environ
-djangorestframework # REST http://www.django-rest-framework.org/
+#djangorestframework # REST http://www.django-rest-framework.org/
 #cerberus # Validation https://github.com/pyeve/cerberus/
-django-generic-m2m # http://django-gm2m.readthedocs.io/en/stable/quick_start.html
+#django-generic-m2m # http://django-gm2m.readthedocs.io/en/stable/quick_start.html
+
+blockcypher
+djangorestframework
+django-model-utils
+django-gm2m
+psycopg2-binary

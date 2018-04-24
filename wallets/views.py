@@ -10,7 +10,7 @@ from django.views.generic.edit import FormMixin, FormView
 from django.views.decorators.csrf import csrf_exempt
 from django.core.exceptions import PermissionDenied
 from django.shortcuts import get_object_or_404
-from django.contrib.auth.mixins import LoginRequiredMixin
+#from django.contrib.auth.mixins import LoginRequiredMixin
 from .utils import get_wallet_model, decode_signin, extract_webhook_id, unsubscribe_from_webhook, validate_signin
 from .signals import get_webhook
 from .mixins import OwnerPermissionsMixin, CheckWalletMixin
@@ -19,7 +19,7 @@ from .forms import WithdrawForm
 from .serializers import WithdrawSerializer
 from .services import generate_new_address, get_wallet_invoices
 from django.core.signing import BadSignature, SignatureExpired
-
+from guardian.mixins import PermissionRequiredMixin, LoginRequiredMixin
 
 try:
     _messages = 'django.contrib.messages' in settings.INSTALLED_APPS
@@ -314,24 +314,25 @@ class InvoiceListView(LoginRequiredMixin, TemplateView):
         return context
 
 
-class InvoiceDetailView(LoginRequiredMixin, DetailView):
+class InvoiceDetailView(LoginRequiredMixin, PermissionRequiredMixin, DetailView):
 
     model = Invoice
-
-    def get_object(self, *args, **kwargs):
-        obj = super(InvoiceDetailView, self).get_object(*args, **kwargs)
-        if obj.sender_wallet_object.user != self.request.user:
-            raise PermissionDenied()
-        elif self.request.user not in [wallet.user for wallet in obj.receiver_wallet_object.all()]:
-            raise PermissionDenied()
-        else:
-            return obj
+    permission_required = ['wallets.view_invoice']
+    raise_exception = True
 
 
-class InvoicePayView(LoginRequiredMixin, DetailView):
+class InvoicePayView(LoginRequiredMixin, PermissionRequiredMixin, DetailView):
     
     model = Invoice
+    permission_required = ['wallets.pay_invoice']
+    raise_exception = True
 
+    def get(self, *args, **kwargs):
+        invoice = get_object_or_404(Invoice, pk=self.kwargs['pk'])
+        invoice.pay()
+        redirect(reverse('wallets:invoice_detail', kwargs={'pk': invoice.pk}))
+        return super().get(*args, **kwargs)
+    '''
     def dispatch(self, request, *args, **kwargs):
         invoice = get_object_or_404(Invoice, pk=self.kwargs['pk'])
         if invoice.sender_wallet_object.user != request.user:
@@ -339,3 +340,4 @@ class InvoicePayView(LoginRequiredMixin, DetailView):
         invoice.pay()
         redirect(reverse('wallets:invoice_detail', kwargs={'pk': invoice.pk}))
         return super(InvoicePayView, self).dispatch(request, *args, **kwargs)
+    '''

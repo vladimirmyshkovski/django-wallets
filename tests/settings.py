@@ -42,7 +42,7 @@ INSTALLED_APPS = [
     "wallets",
     "behave_django",
     "gm2m",
-
+    'guardian'
 ]
 
 SITE_ID = 1
@@ -101,3 +101,10 @@ TESTING = sys.argv[1:2] == ['test']
 
 STATIC_URL = '/static/'
 MEDIA_URL = '/media/'
+
+AUTHENTICATION_BACKENDS = [
+    'django.contrib.auth.backends.ModelBackend',
+    'guardian.backends.ObjectPermissionBackend'
+]
+#GUARDIAN_RAISE_403 = True
+GUARDIAN_RENDER_403 = True
