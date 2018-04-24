@@ -141,32 +141,31 @@ class BaseWallet(TimeStampedModel, SoftDeletableModel):
         return invoice
 
     @classmethod
-    def get_coin_symbol(cls):
-        if cls.__name__.lower().startswith('btc'):    
+    def _get_coin_symbol_and_name(cls):
+        if cls.__name__.lower().startswith('btc'):
             coin_symbol = 'btc'
+            coin_name = 'bitcoin'
         elif cls.__name__.lower().startswith('ltc'):
             coin_symbol = 'ltc'
+            coin_name = 'litecoin'
         elif cls.__name__.lower().startswith('dash'):
             coin_symbol = 'dash'
+            coin_name = 'dash'
         elif cls.__name__.lower().startswith('doge'):
             coin_symbol = 'doge'
+            coin_name = 'dogecoin'
         elif cls.__name__.lower().startswith('bcy'):
-            coin_symbol = 'bcy'        
-        return coin_symbol
+            coin_symbol = 'bcy'                    
+            coin_name = 'blockcypher'
+        return {'coin_symbol': coin_symbol, 'coin_name': coin_name}
+
+    @classmethod
+    def get_coin_symbol(cls):
+        return cls._get_coin_symbol_and_name()['coin_symbol']
 
     @classmethod
     def get_coin_name(cls):
-        if cls.__name__.lower().startswith('btc'):    
-            coin_name = 'bitcoin'
-        elif cls.__name__.lower().startswith('ltc'):
-            coin_name = 'litecoin'
-        elif cls.__name__.lower().startswith('dash'):
-            coin_name = 'dash'
-        elif cls.__name__.lower().startswith('doge'):
-            coin_name = 'dogecoin'
-        elif cls.__name__.lower().startswith('bcy'):
-            coin_name = 'blockcypher'
-        return coin_name
+        return cls._get_coin_symbol_and_name()['coin_name']
 
     @classmethod
     def get_rate(cls):
