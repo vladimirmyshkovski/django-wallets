@@ -1,15 +1,13 @@
-from django.core import signing
 from django.conf import settings
 from django.utils.decorators import method_decorator
 from django.utils.translation import ugettext_lazy as _
 from django.http import JsonResponse, Http404
 from django.urls import reverse
 from django.shortcuts import redirect
-from django.views.generic import (DetailView, ListView,
+from django.views.generic import (DetailView, ListView, UpdateView,
                                   RedirectView, View, TemplateView)
-from django.views.generic.edit import FormMixin, FormView
+from django.views.generic.edit import FormMixin
 from django.views.decorators.csrf import csrf_exempt
-from django.core.exceptions import PermissionDenied
 from django.shortcuts import get_object_or_404
 #from django.contrib.auth.mixins import LoginRequiredMixin
 from .utils import (get_wallet_model, decode_signin,
@@ -17,7 +15,7 @@ from .utils import (get_wallet_model, decode_signin,
                     validate_signin)
 from .signals import get_webhook
 from .mixins import OwnerPermissionsMixin, CheckWalletMixin
-from .models import Btc, Ltc, Doge, Dash, Invoice
+from .models import Invoice
 from .forms import WithdrawForm
 from .services import generate_new_address, get_wallet_invoices
 from django.core.signing import BadSignature, SignatureExpired
@@ -26,10 +24,10 @@ from guardian.mixins import PermissionRequiredMixin, LoginRequiredMixin
 try:
     _messages = 'django.contrib.messages' in settings.INSTALLED_APPS
 
-except AttributeError: # pragma: no cover
+except AttributeError:  # pragma: no cover
     _messages = False
 
-if _messages: # pragma: no cover 
+if _messages:  # pragma: no cover
     from django.contrib import messages
 
 
@@ -59,7 +57,7 @@ class WalletsCreateView(BaseWalletMixin, RedirectView):
         )
         self.address = address
         if address:
-            if _messages: # pragma: no cover 
+            if _messages:  # pragma: no cover
                 messages.success(
                     self.request,
                     _('New {} address successfully created'.format(
@@ -67,7 +65,7 @@ class WalletsCreateView(BaseWalletMixin, RedirectView):
                     ))
                 )
         else:
-            if _messages: # pragma: no cover 
+            if _messages:  # pragma: no cover
                 messages.error(
                     self.request,
                     _('Something wrong, try again later')
@@ -85,10 +83,10 @@ class WalletsListView(BaseWalletMixin, ListView):
 
     template_name = 'wallets/list.html'
     context_object_name = 'wallets_list'
-    
+
     def get_queryset(self, queryset=None):
         return self.wallet.objects.filter(user=self.request.user)
-    
+
     def get_context_data(self, **kwargs):
         context = super(WalletsListView, self).get_context_data(**kwargs)
         balance = 0
@@ -97,7 +95,7 @@ class WalletsListView(BaseWalletMixin, ListView):
         context['total_balance'] = balance
         context['symbol'] = self.wallet.get_coin_symbol()
         return context
-    
+
     def dispatch(self, request, *args, **kwargs):
         self.wallet = self.check_wallet(self.kwargs['wallet'])
         if not self.wallet:
@@ -119,7 +117,7 @@ class WalletsDetailView(BaseWalletMixin, FormMixin, DetailView):
 
     def get_context_data(self, **kwargs):
         context = super(WalletsDetailView, self).get_context_data(**kwargs)
-        context['form'] = self.get_form()#self.request.POST, obj=self.object)#initial={'post': self.object})#self.request.POST)#initial={'post': self.object})
+        context['form'] = self.get_form()
         return context
 
     def post(self, request, *args, **kwargs):
@@ -128,7 +126,7 @@ class WalletsDetailView(BaseWalletMixin, FormMixin, DetailView):
         if form.is_valid():
             return self.form_valid(form)
         else:
-            return self.form_invalid(form)        
+            return self.form_invalid(form)
 
     def get_form(self):
         if self.request.POST:
@@ -141,13 +139,12 @@ class WalletsDetailView(BaseWalletMixin, FormMixin, DetailView):
 
     def form_valid(self, form):
         transaction = form.spend()
-        if _messages: # pragma: no cover 
-            messages.add_message(
+        if _messages:  # pragma: no cover
+            messages.success(
                 self.request,
-                messages.SUCCESS,
                 _('Transaction successfully created {}'.format(transaction))
             )
-        return super(WalletsDetailView, self).form_valid(form)      
+        return super(WalletsDetailView, self).form_valid(form)
 
     def get_success_url(self):
         return reverse(
@@ -156,114 +153,6 @@ class WalletsDetailView(BaseWalletMixin, FormMixin, DetailView):
                 'wallet': self.kwargs['wallet'],
                 'address': self.kwargs['address']
                 })
-'''
-class WalletsWithdrawView(BaseWalletView, FormView):
-
-    http_method_names = [u'post', u'get']
-
-    def get_object(self, queryset=None):
-        model = self.check_wallet(self.kwargs['wallet'])
-        if model:
-            return model.objects.get(address=self.kwargs['address'])
-
-    def post(self, request, *args, **kwargs):    
-        serializer = WithdrawSerializer(data = request.POST)
-        if not serializer.is_valid():
-            errors = serializer.errors
-            if _messages:
-                for error in errors:
-                    messages.add_message(self.request, messages.ERROR, _(error))
-            return super(WalletsWithdrawView, self).post(request, *args, **kwargs)
-        
-        address = self.request.POST.get('address', None)
-        if not address:
-            if _messages:
-                messages.add_message(self.request, messages.ERROR, _('Address field can not be blank'))
-            return super(WalletsWithdrawView, self).post(request, *args, **kwargs)
-
-        amount = self.request.POST.get('amount', None)
-        if not amount:
-            if _messages:
-                messages.add_message(self.request, messages.ERROR, _('Amount field can not be blank'))
-            return super(WalletsWithdrawView, self).post(request, *args, **kwargs)
-
-        obj = self.get_object()
-
-        if float(amount) > obj.balance:
-            if _messages:
-                messages.add_message(self.request, messages.ERROR, _('Amount can not be more than the balance of this address.'))
-            return super(WalletsWithdrawView, self).post(request, *args, **kwargs)
-
-        try:
-            transaction = obj.spend(address, float(amount))
-            if _messages:
-                messages.add_message(self.request, messages.SUCCESS, _('Transaction successfully created {}'.format(transaction)))
-        except:
-            if _messages:
-                messages.add_message(self.request, messages.ERROR, _('Something wrong, try again later'))
-        return super(WalletsWithdrawView, self).post(request, *args, **kwargs)
-    
-    def get(self, request, *args, **kwargs):
-        return redirect(
-            reverse('wallets:detail', kwargs={
-                'wallet': self.kwargs['wallet'],
-                'address': self.kwargs['address']
-                }
-            )
-        )
-'''
-
-'''
-
-from django.views.decorators.csrf import csrf_exempt
-from django.utils.decorators import method_decorator
-
-class WalletsAutocompleteView(View):
-
-    http_method_names = ['get'] 
-
-    def get(self, request, *args, **kwargs):
-        self.q = request.GET.get('q', None)
-        
-        if not request.user.is_authenticated:
-            return []
-
-        btc = Btc.objects.filter(user=self.request.user)
-        ltc = Ltc.objects.filter(user=self.request.user)
-        doge = Doge.objects.filter(user=self.request.user)
-        dash = Dash.objects.filter(user=self.request.user)
-
-        if self.q:
-            btc = btc.filter(address__icontains=self.q)
-            ltc = ltc.filter(address__icontains=self.q)
-            doge = doge.filter(address__icontains=self.q)
-            dash = dash.filter(address__icontains=self.q)
-
-        # Aggregate querysets
-        #qs = autocomplete.QuerySetSequence(btc, ltc, doge, dash)
-        qs_list = []
-        qs_list.append(btc)
-        qs_list.append(ltc)
-        qs_list.append(doge)
-        qs_list.append(dash)
-        for item in qs_list:
-            qs = set(item)
-
-        if self.q:
-            # This would apply the filter on all the querysets
-            qs = qs.filter(Q(coin_name__icontains=self.q) | Q(coin_symbol__icontains=self.q))
-
-        # This will limit each queryset so that they show an equal number
-        # of results.
-        #qs = self.mixup_querysets(qs)
-        
-        qs = []
-        return qs
-
-    @method_decorator(csrf_exempt)
-    def dispatch(self, request, *args, **kwargs):
-        return super(CommandReceiveView, self).dispatch(request, *args, **kwargs)        
-'''
 
 
 class WalletsWebhookView(View):
@@ -315,8 +204,10 @@ class InvoiceListView(LoginRequiredMixin, TemplateView):
                 wallets=wallets,
                 symbol=symbol
             )
-            context['{}_received_invoices'.format(symbol)] = invoices_list['{}_received_invoices'.format(symbol)]
-            context['{}_sended_invoices'.format(symbol)] = invoices_list['{}_sended_invoices'.format(symbol)]
+            context['{}_received_invoices'.format(
+                symbol)] = invoices_list['{}_received_invoices'.format(symbol)]
+            context['{}_sended_invoices'.format(
+                symbol)] = invoices_list['{}_sended_invoices'.format(symbol)]
         return context
 
 
@@ -336,15 +227,16 @@ class InvoicePayView(LoginRequiredMixin, PermissionRequiredMixin, DetailView):
 
     def get(self, *args, **kwargs):
         invoice = get_object_or_404(Invoice, pk=self.kwargs['pk'])
-        invoice.pay()
+        if self.request.user.has_perm('pay_invoice', invoice):
+            invoice.pay()
+            if _messages:
+                last_tx_ref = invoice.tx_refs.last()
+                transaction = last_tx_ref.tx_ref
+                messages.success(
+                    self.request,
+                    _('''The account was successfully sent.
+                         Wait for transaction {}
+                         confirmation.'''.format(transaction))
+                )
         redirect(reverse('wallets:invoice_detail', kwargs={'pk': invoice.pk}))
         return super().get(*args, **kwargs)
-    '''
-    def dispatch(self, request, *args, **kwargs):
-        invoice = get_object_or_404(Invoice, pk=self.kwargs['pk'])
-        if invoice.sender_wallet_object.user != request.user:
-            raise PermissionDenied()
-        invoice.pay()
-        redirect(reverse('wallets:invoice_detail', kwargs={'pk': invoice.pk}))
-        return super(InvoicePayView, self).dispatch(request, *args, **kwargs)
-    '''

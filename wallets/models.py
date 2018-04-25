@@ -279,8 +279,8 @@ class Invoice(models.Model):
 
     class Meta:
         permissions = (
-            ('view_invoice', 'Can view invoice'),
-            ('pay_invoice', 'Can pay invoice'),
+            ('view_invoice', _('Can view invoice')),
+            ('pay_invoice', _('Can pay invoice')),
         )
 
     def __init__(self, *args, **kwargs):

@@ -6,4 +6,4 @@ class WalletsConfig(AppConfig):
     verbose_name = 'Wallets'
 
     def ready(self):
-    	from . import signals
+        from . import signals

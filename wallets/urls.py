@@ -1,5 +1,4 @@
 from django.urls import re_path
-from django.views.generic import TemplateView
 from . import views
 
 app_name = 'wallets'
@@ -23,7 +22,7 @@ urlpatterns = [
         r'^invoices/$',
         view=views.InvoiceListView.as_view(),
         name='invoice_list'
-    ),    
+    ),
     re_path(
         r'^invoices/(?P<pk>\d+)/$',
         view=views.InvoiceDetailView.as_view(),
