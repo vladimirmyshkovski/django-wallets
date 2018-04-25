@@ -312,14 +312,16 @@ class Invoice(models.Model):
         return values
 
     def pay(self):
-        tx_ref = self.sender_wallet_object.spend_with_webhook(
-            [wallet.address for wallet in self.receiver_wallet_object.all()],
-            [amount for amount in self.amount])
-        invoice_transaction = InvoiceTransaction.objects.create(
-            invoice=self,
-            tx_ref=tx_ref
-        )
-        return invoice_transaction.tx_ref
+        if self.sender_wallet_object.user.has_perm('pay_invoice', self):
+            tx_ref = self.sender_wallet_object.spend_with_webhook(
+                [wallet.address for wallet in self.receiver_wallet_object.all()],
+                [amount for amount in self.amount])
+            invoice_transaction = InvoiceTransaction.objects.create(
+                invoice=self,
+                tx_ref=tx_ref
+            )
+            return invoice_transaction.tx_ref
+        return None
 
     def get_absolute_url(self):
         return reverse('wallets:invoice_detail', kwargs={'pk': self.pk})
