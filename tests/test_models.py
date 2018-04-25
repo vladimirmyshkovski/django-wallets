@@ -330,6 +330,9 @@ class TestBtc(TestCase):
         self.assertEqual(invoice.amount, [100])
         self.assertTrue(btc in invoice.receiver_wallet_object.all())
         self.assertEqual(btc.invoice_set.first(), invoice)
+        print(btc._meta.get_fields())
+        print(btc.__dict__)
+        
     def tearDown(self):
         pass
 

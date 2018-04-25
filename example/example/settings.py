@@ -40,6 +40,7 @@ INSTALLED_APPS = [
     'rest_framework',
     'rest_framework.authtoken',
     'gm2m',
+    'guardian'
     # if your app has other dependencies that need to be added to the site
     # they should be added here
 ]
@@ -149,3 +150,9 @@ REST_FRAMEWORK = {
         'rest_framework.permissions.IsAuthenticated',
     )
 }
+
+AUTHENTICATION_BACKENDS = [
+    'django.contrib.auth.backends.ModelBackend',
+    'guardian.backends.ObjectPermissionBackend'
+]
+GUARDIAN_RAISE_403 = True

@@ -1,10 +1,11 @@
-from .models import Btc, Ltc, Dash, Doge#, Bcy
-from django.shortcuts import get_object_or_404
+from .models import Btc, Ltc, Dash, Doge  # Bcy
 from rest_framework import viewsets
 from rest_framework import status
 from rest_framework.response import Response
 
-from .serializers import BtcSerializer, LtcSerializer, DashSerializer, DogeSerializer, WithdrawSerializer#, BcySerializer
+from .serializers import (BtcSerializer, LtcSerializer, DashSerializer,
+                          DogeSerializer, WithdrawSerializer)  # BcySerializer
+
 from .permissions import IsOwnerOrReadOnly
 
 from rest_framework import mixins
@@ -14,12 +15,12 @@ from .utils import decode_signin, extract_webhook_id, unsubscribe_from_webhook
 
 
 from rest_framework.permissions import IsAuthenticated
-
+from .signals import get_webhook
 
 
 class WebhookViewSet(viewsets.ViewSet):
 
-    @detail_route (methods=['post'])
+    @detail_route(methods=['post'])
     def webhook(self, request, signature=None):
         #signature = request.data.get('signature', None)
         if not signature:
@@ -30,22 +31,22 @@ class WebhookViewSet(viewsets.ViewSet):
         if sign:
             get_webhook.send(
                 sender=None,
-                from_address = sign['from_address'],
-                to_address = sign['to_address'],
-                symbol = sign['symbol'],
-                event = sign['event'],
-                transaction_id = sign['transaction_id']
+                from_address=sign['from_address'],
+                to_address=sign['to_address'],
+                symbol=sign['symbol'],
+                event=sign['event'],
+                transaction_id=sign['transaction_id']
                 )
             webhook_id = extract_webhook_id(signature, sign['symbol'])
             if webhook_id:
-                unsubscribe = unsubscribe_from_webhook(webhook_id)
+                unsubscribe_from_webhook(webhook_id)
         return Response(status=status.HTTP_200_OK)
 
 
 class BaseViewSet(mixins.CreateModelMixin,
-                mixins.ListModelMixin,
-                mixins.RetrieveModelMixin,
-                viewsets.GenericViewSet):
+                  mixins.ListModelMixin,
+                  mixins.RetrieveModelMixin,
+                  viewsets.GenericViewSet):
 
     permission_classes = (IsAuthenticated,)
 
@@ -56,7 +57,11 @@ class BaseViewSet(mixins.CreateModelMixin,
         instance = self.model.objects.create(user=self.request.user)
         serializer = self.get_serializer(instance)
         headers = self.get_success_headers(serializer.data)
-        return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+        return Response(
+            serializer.data,
+            status=status.HTTP_201_CREATED,
+            headers=headers
+        )
 
     @detail_route(methods=['post'])
     def withdraw(self, request, pk=None):
@@ -64,19 +69,19 @@ class BaseViewSet(mixins.CreateModelMixin,
         if serializer.is_valid():
             try:
                 obj = self.get_object()
-                
+
                 address = request.data['address']
-                amount = request.data['amount']            
-                
-                transaction = obj.spend(address, float(amount))
-                
-                #content = 'Transaction {} successfully created'.foramt(transaction)
-                
+                amount = request.data['amount']
+
+                obj.spend(address, float(amount))
+
                 return Response(serializer.data, status=status.HTTP_200_OK)
             except:
                 pass
-        return Response({'status': 'Something wrong, try again later'}, status=status.HTTP_400_BAD_REQUEST)
-
+        return Response(
+            {'status': 'Something wrong, try again later'},
+            status=status.HTTP_400_BAD_REQUEST
+            )
 
     @list_route(methods=['post'])
     def webhook(self, request):
@@ -89,16 +94,16 @@ class BaseViewSet(mixins.CreateModelMixin,
         if sign:
             get_webhook.send(
                 sender=None,
-                from_address = sign['from_address'],
-                to_address = sign['to_address'],
-                symbol = sign['symbol'],
-                event = sign['event'],
-                transaction_id = sign['transaction_id']
+                from_address=sign['from_address'],
+                to_address=sign['to_address'],
+                symbol=sign['symbol'],
+                event=sign['event'],
+                transaction_id=sign['transaction_id']
                 )
             webhook_id = extract_webhook_id(signature, sign['symbol'])
             if webhook_id:
-                unsubscribe = unsubscribe_from_webhook(webhook_id)
-        return Response(status=status.HTTP_200_OK)    
+                unsubscribe_from_webhook(webhook_id)
+        return Response(status=status.HTTP_200_OK)
 
 
 class BtcViewSet(BaseViewSet):
@@ -118,7 +123,7 @@ class LtcViewSet(BaseViewSet):
     serializer_class = LtcSerializer
     queryset = Ltc.objects.all()
     permissions = [IsOwnerOrReadOnly]
-    model = Ltc  
+    model = Ltc
 
 
 class DashViewSet(BaseViewSet):
@@ -137,7 +142,7 @@ class DogeViewSet(BaseViewSet):
     """
     serializer_class = DogeSerializer
     queryset = Doge.objects.all()
-    permissions = [IsOwnerOrReadOnly]    
+    permissions = [IsOwnerOrReadOnly]
     model = Doge
 
 '''
@@ -147,6 +152,6 @@ class BcyViewSet(BaseViewSet):
     """
     serializer_class = BcySerializer
     queryset = Bcy.objects.all()
-    permissions = [IsOwnerOrReadOnly]    
+    permissions = [IsOwnerOrReadOnly]
     model = Bcy
 '''

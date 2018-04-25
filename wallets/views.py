@@ -4,8 +4,8 @@ from django.utils.translation import ugettext_lazy as _
 from django.http import JsonResponse, Http404
 from django.urls import reverse
 from django.shortcuts import redirect
-from django.views.generic import (DetailView, ListView, UpdateView,
-                                  RedirectView, View, TemplateView)
+from django.views.generic import (DetailView, ListView, RedirectView,
+                                  View, TemplateView)
 from django.views.generic.edit import FormMixin
 from django.views.decorators.csrf import csrf_exempt
 from django.shortcuts import get_object_or_404
@@ -20,6 +20,10 @@ from .forms import WithdrawForm
 from .services import generate_new_address, get_wallet_invoices
 from django.core.signing import BadSignature, SignatureExpired
 from guardian.mixins import PermissionRequiredMixin, LoginRequiredMixin
+
+#from django.contrib.auth.mixins import (PermissionRequiredMixin,
+#                                        LoginRequiredMixin)
+
 
 try:
     _messages = 'django.contrib.messages' in settings.INSTALLED_APPS

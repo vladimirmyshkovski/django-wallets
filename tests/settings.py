@@ -39,10 +39,11 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    "guardian",
+    #"guardian.models.UserObjectPermission",
+    "gm2m",
     "wallets",
     "behave_django",
-    "gm2m",
-    'guardian'
 ]
 
 SITE_ID = 1
@@ -106,5 +107,4 @@ AUTHENTICATION_BACKENDS = [
     'django.contrib.auth.backends.ModelBackend',
     'guardian.backends.ObjectPermissionBackend'
 ]
-#GUARDIAN_RAISE_403 = True
-GUARDIAN_RENDER_403 = True
+GUARDIAN_RAISE_403 = True
