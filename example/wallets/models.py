@@ -14,6 +14,7 @@ from model_utils.models import TimeStampedModel, SoftDeletableModel
 from django.core.validators import MinValueValidator
 from django.contrib.postgres.fields import ArrayField
 from gm2m import GM2MField
+from guardian.shortcuts import assign_perm
 from . import api
 
 domain = settings.DOMAIN_NAME
@@ -151,7 +152,6 @@ class BaseWallet(TimeStampedModel, SoftDeletableModel):
         return details
 
     def create_invoice(self, wallets, amounts):
-        from guardian.shortcuts import assign_perm
         invoice = Invoice.objects.create(
             amount=amounts,
             sender_wallet_object=self

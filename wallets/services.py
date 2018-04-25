@@ -2,7 +2,7 @@ import blockcypher
 from django.contrib.auth import get_user_model
 from .utils import get_wallet_model
 from django.conf import settings
-
+from wallets import models
 
 api_key = settings.BLOCKCYPHER_API_KEY
 
