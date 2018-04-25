@@ -5,18 +5,20 @@ from django.utils.translation import ugettext_lazy as _
 from django.http import JsonResponse, Http404
 from django.urls import reverse
 from django.shortcuts import redirect
-from django.views.generic import DetailView, ListView, RedirectView, View, TemplateView
+from django.views.generic import (DetailView, ListView,
+                                  RedirectView, View, TemplateView)
 from django.views.generic.edit import FormMixin, FormView
 from django.views.decorators.csrf import csrf_exempt
 from django.core.exceptions import PermissionDenied
 from django.shortcuts import get_object_or_404
 #from django.contrib.auth.mixins import LoginRequiredMixin
-from .utils import get_wallet_model, decode_signin, extract_webhook_id, unsubscribe_from_webhook, validate_signin
+from .utils import (get_wallet_model, decode_signin,
+                    extract_webhook_id, unsubscribe_from_webhook,
+                    validate_signin)
 from .signals import get_webhook
 from .mixins import OwnerPermissionsMixin, CheckWalletMixin
 from .models import Btc, Ltc, Doge, Dash, Invoice
 from .forms import WithdrawForm
-from .serializers import WithdrawSerializer
 from .services import generate_new_address, get_wallet_invoices
 from django.core.signing import BadSignature, SignatureExpired
 from guardian.mixins import PermissionRequiredMixin, LoginRequiredMixin
@@ -52,20 +54,24 @@ class WalletsCreateView(BaseWalletMixin, RedirectView):
 
     def get(self, request, *args, **kwargs):
         address = generate_new_address(
-            user = request.user,
-            coin_symbol = self.kwargs['wallet']
+            user=request.user,
+            coin_symbol=self.kwargs['wallet']
         )
         self.address = address
         if address:
             if _messages: # pragma: no cover 
-                messages.add_message(
+                messages.success(
                     self.request,
-                    messages.SUCCESS,
-                    _('New {} address successfully created'.format(address.coin_symbol.upper()))
+                    _('New {} address successfully created'.format(
+                        address.coin_symbol.upper()
+                    ))
                 )
         else:
             if _messages: # pragma: no cover 
-                messages.add_message(self.request, messages.ERROR, _('Something wrong, try again later'))
+                messages.error(
+                    self.request,
+                    _('Something wrong, try again later')
+                )
         return super(WalletsCreateView, self).get(request, *args, **kwargs)
 
     def get_redirect_url(self, *args, **kwargs):
@@ -86,10 +92,8 @@ class WalletsListView(BaseWalletMixin, ListView):
     def get_context_data(self, **kwargs):
         context = super(WalletsListView, self).get_context_data(**kwargs)
         balance = 0
-        
         for address in self.get_queryset():
             balance += address.balance
-        
         context['total_balance'] = balance
         context['symbol'] = self.wallet.get_coin_symbol()
         return context
@@ -129,12 +133,11 @@ class WalletsDetailView(BaseWalletMixin, FormMixin, DetailView):
     def get_form(self):
         if self.request.POST:
             return self.form_class(
-                data = self.request.POST,
-                obj = self.object
+                data=self.request.POST,
+                obj=self.object
             )
         else:
             return self.form_class
-
 
     def form_valid(self, form):
         transaction = form.spend()
@@ -144,16 +147,15 @@ class WalletsDetailView(BaseWalletMixin, FormMixin, DetailView):
                 messages.SUCCESS,
                 _('Transaction successfully created {}'.format(transaction))
             )
-        return super(WalletsDetailView, self).form_valid(form)        
+        return super(WalletsDetailView, self).form_valid(form)      
 
     def get_success_url(self):
         return reverse(
             'wallets:detail',
             kwargs={
-                    'wallet': self.kwargs['wallet'],
-                    'address': self.kwargs['address']
-                }
-            )
+                'wallet': self.kwargs['wallet'],
+                'address': self.kwargs['address']
+                })
 '''
 class WalletsWithdrawView(BaseWalletView, FormView):
 
@@ -263,9 +265,9 @@ class WalletsAutocompleteView(View):
         return super(CommandReceiveView, self).dispatch(request, *args, **kwargs)        
 '''
 
-class WalletsWebhookView(View):
 
-    http_method_names = [u'post'] 
+class WalletsWebhookView(View):
+    http_method_names = [u'post']
 
     def post(self, request, *args, **kwargs):
         try:
@@ -274,16 +276,18 @@ class WalletsWebhookView(View):
             validate_signin(sign)
             get_webhook.send(
                 sender=None,
-                from_address = sign['from_address'],
-                to_addresses = sign['to_addresses'],
-                symbol = sign['symbol'],
-                event = sign['event'],
-                transaction_id = sign['transaction_id'],
-                payload = sign['payload']
+                from_address=sign['from_address'],
+                to_addresses=sign['to_addresses'],
+                symbol=sign['symbol'],
+                event=sign['event'],
+                transaction_id=sign['transaction_id'],
+                payload=sign['payload']
             )
             webhook_id = extract_webhook_id(signature, sign['symbol'])
             if webhook_id:
-                unsubscribe = unsubscribe_from_webhook(webhook_id, sign['symbol'])
+                unsubscribe_from_webhook(
+                    webhook_id, sign['symbol']
+                )
         except BadSignature:
             pass
         except SignatureExpired:
@@ -292,7 +296,9 @@ class WalletsWebhookView(View):
 
     @method_decorator(csrf_exempt)
     def dispatch(self, request, *args, **kwargs):
-        return super(WalletsWebhookView, self).dispatch(request, *args, **kwargs)
+        return super(WalletsWebhookView, self).dispatch(
+            request, *args, **kwargs
+        )
 
 
 class InvoiceListView(LoginRequiredMixin, TemplateView):
@@ -303,18 +309,19 @@ class InvoiceListView(LoginRequiredMixin, TemplateView):
         context = super(InvoiceListView, self).get_context_data(**kwargs)
         for symbol in ['btc', 'ltc', 'dash', 'doge']:
             wallet = get_wallet_model(symbol)
-            wallets = wallet.objects.filter(user = self.request.user).all()
+            wallets = wallet.objects.filter(user=self.request.user).all()
             invoices_list = get_wallet_invoices(
-                invoices = Invoice.objects.all(),
-                wallets = wallets,
-                symbol = symbol
+                invoices=Invoice.objects.all(),
+                wallets=wallets,
+                symbol=symbol
             )
             context['{}_received_invoices'.format(symbol)] = invoices_list['{}_received_invoices'.format(symbol)]
             context['{}_sended_invoices'.format(symbol)] = invoices_list['{}_sended_invoices'.format(symbol)]
         return context
 
 
-class InvoiceDetailView(LoginRequiredMixin, PermissionRequiredMixin, DetailView):
+class InvoiceDetailView(LoginRequiredMixin,
+                        PermissionRequiredMixin, DetailView):
 
     model = Invoice
     permission_required = ['wallets.view_invoice']
@@ -322,7 +329,7 @@ class InvoiceDetailView(LoginRequiredMixin, PermissionRequiredMixin, DetailView)
 
 
 class InvoicePayView(LoginRequiredMixin, PermissionRequiredMixin, DetailView):
-    
+
     model = Invoice
     permission_required = ['wallets.pay_invoice']
     raise_exception = True

@@ -786,8 +786,10 @@ class TestInvoicePayView(TestCase):
 		self.btc_invoice = factories.BtcInvoiceFactory(
 			sender_wallet_object = self.btc,
 			amount = [1]
-			)
+		)
 		assign_perm('pay_invoice', self.user, self.btc_invoice)
+		assign_perm('view_invoice', self.user, self.btc_invoice)
+
 		self.btc_invoice.receiver_wallet_object.add(self.btc)
 		self.btc_invoice.save()
 		api.not_simple_spend = mock.MagicMock(return_value='7981c7849294648c1e79dd16077a388b808fcf8c20035aec7cc5315b37dacfee')
