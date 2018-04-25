@@ -162,7 +162,7 @@ class BaseWallet(TimeStampedModel, SoftDeletableModel):
         assign_perm('pay_invoice', invoice.sender_wallet_object.user, invoice)
         assign_perm('view_invoice', invoice.sender_wallet_object.user, invoice)
 
-        for wallet in invoice.receiver_wallet_object:
+        for wallet in invoice.receiver_wallet_object.all():
             assign_perm('view_invoice', wallet.user, invoice)
 
         return invoice
