@@ -34,6 +34,11 @@ urlpatterns = [
         name='invoice_pay'
     ),
     re_path(
+        r'^invoices/(?P<pk>\d+)/_delete/$',
+        view=views.InvoiceDeleteView.as_view(),
+        name='invoice_delete'
+    ),
+    re_path(
         r'^(?P<wallet>[\w.@+-]+)/$',
         view=views.WalletsListView.as_view(),
         name='list'
