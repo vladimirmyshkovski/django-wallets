@@ -81,12 +81,13 @@ def unpaid_symbol_user_received_invoices(context, symbol):
 
 
 @register.simple_tag(takes_context=True)
-def unpaid_symbol_user_invoices(context, symbol):
+def unpaid_symbol_user_invoices(context):
     request = context['request']
     if request:
         invoices_count = 0
-        wallet = get_wallet_model(symbol)
-        if wallet:
+        symbols = ['btc', 'ltc', 'dash', 'doge', 'bcy']
+        for symbol in symbols:
+            wallet = get_wallet_model(symbol)
             invoices_count += wallet.get_unpaid_received_invoices(
                 user=request.user,
                 symbol=symbol
@@ -95,4 +96,4 @@ def unpaid_symbol_user_invoices(context, symbol):
                 user=request.user,
                 symbol=symbol
             )
-            return invoices_count
+        return invoices_count
