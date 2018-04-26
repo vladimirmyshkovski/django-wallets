@@ -548,9 +548,66 @@ class TestUnpaidSymbolUserInvoices(TestCase):
 
         out = Template(
             "{% load wallets_tags %}"
-            "{% unpaid_symbol_user_invoices %}"
+            "{% unpaid_symbol_user_invoices symbol %}"
         ).render(Context({
             'request': request,
+            'symbol': 'btc'
+        }
+        ))
+
+        self.assertEqual(
+            out,
+            '0'
+        )
+
+        out = Template(
+            "{% load wallets_tags %}"
+            "{% unpaid_symbol_user_invoices symbol %}"
+        ).render(Context({
+            'request': request,
+            'symbol': 'ltc'
+        }
+        ))
+
+        self.assertEqual(
+            out,
+            '0'
+        )
+
+        out = Template(
+            "{% load wallets_tags %}"
+            "{% unpaid_symbol_user_invoices symbol %}"
+        ).render(Context({
+            'request': request,
+            'symbol': 'dash'
+        }
+        ))
+
+        self.assertEqual(
+            out,
+            '0'
+        )
+
+        out = Template(
+            "{% load wallets_tags %}"
+            "{% unpaid_symbol_user_invoices symbol %}"
+        ).render(Context({
+            'request': request,
+            'symbol': 'doge'
+        }
+        ))
+
+        self.assertEqual(
+            out,
+            '0'
+        )
+
+        out = Template(
+            "{% load wallets_tags %}"
+            "{% unpaid_symbol_user_invoices symbol %}"
+        ).render(Context({
+            'request': request,
+            'symbol': 'bcy'
         }
         ))
 
@@ -589,13 +646,70 @@ class TestUnpaidSymbolUserInvoices(TestCase):
 
         out = Template(
             "{% load wallets_tags %}"
-            "{% unpaid_symbol_user_invoices %}"
+            "{% unpaid_symbol_user_invoices symbol %}"
         ).render(Context({
             'request': request,
+            'symbol': 'btc'
         }
         ))
 
         self.assertEqual(
             out,
-            '10'
+            '2'
+        )
+
+        out = Template(
+            "{% load wallets_tags %}"
+            "{% unpaid_symbol_user_invoices symbol %}"
+        ).render(Context({
+            'request': request,
+            'symbol': 'ltc'
+        }
+        ))
+
+        self.assertEqual(
+            out,
+            '2'
+        )
+
+        out = Template(
+            "{% load wallets_tags %}"
+            "{% unpaid_symbol_user_invoices symbol %}"
+        ).render(Context({
+            'request': request,
+            'symbol': 'dash'
+        }
+        ))
+
+        self.assertEqual(
+            out,
+            '2'
+        )
+
+        out = Template(
+            "{% load wallets_tags %}"
+            "{% unpaid_symbol_user_invoices symbol %}"
+        ).render(Context({
+            'request': request,
+            'symbol': 'doge'
+        }
+        ))
+
+        self.assertEqual(
+            out,
+            '2'
+        )
+
+        out = Template(
+            "{% load wallets_tags %}"
+            "{% unpaid_symbol_user_invoices symbol %}"
+        ).render(Context({
+            'request': request,
+            'symbol': 'bcy'
+        }
+        ))
+
+        self.assertEqual(
+            out,
+            '2'
         )
