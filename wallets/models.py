@@ -285,7 +285,7 @@ class Bcy(BaseWallet):
 
 
 @python_2_unicode_compatible
-class Invoice(models.Model):
+class Invoice(TimeStampedModel, SoftDeletableModel):
 
     limit = models.Q(app_label='wallets', model='btc') | \
         models.Q(app_label='wallets', model='ltc') | \

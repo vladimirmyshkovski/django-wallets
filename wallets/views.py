@@ -5,7 +5,7 @@ from django.http import JsonResponse, Http404
 from django.urls import reverse
 from django.shortcuts import redirect
 from django.views.generic import (DetailView, ListView, RedirectView,
-                                  View, TemplateView)
+                                  View, TemplateView, DeleteView)
 from django.views.generic.edit import FormMixin
 from django.views.decorators.csrf import csrf_exempt
 from django.shortcuts import get_object_or_404
@@ -242,6 +242,14 @@ class InvoiceDetailView(LoginRequiredMixin,
     raise_exception = True
 
 
+class InvoiceDeleteView(LoginRequiredMixin,
+                        PermissionRequiredMixin, DeleteView):
+
+    model = Invoice
+    permission_required = ['wallets.pay_invoice']
+    raise_exception = True
+
+
 class InvoicePayView(LoginRequiredMixin, PermissionRequiredMixin, DetailView):
 
     model = Invoice
@@ -265,7 +273,7 @@ class InvoicePayView(LoginRequiredMixin, PermissionRequiredMixin, DetailView):
                     )
             else:
                 if _messages:
-                    messages.success(
+                    messages.error(
                         self.request,
                         _('''You do not have enough funds
                              to pay your invoice.''')
