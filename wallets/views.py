@@ -263,5 +263,12 @@ class InvoicePayView(LoginRequiredMixin, PermissionRequiredMixin, DetailView):
                              Wait for transaction {}
                              confirmation.'''.format(transaction))
                     )
+            else:
+                if _messages:
+                    messages.success(
+                        self.request,
+                        _('''You do not have enough funds
+                             to pay your invoice.''')
+                    )
         redirect(reverse('wallets:invoice_detail', kwargs={'pk': invoice.pk}))
         return super().get(*args, **kwargs)
