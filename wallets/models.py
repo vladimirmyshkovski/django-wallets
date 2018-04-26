@@ -16,7 +16,11 @@ from django.contrib.postgres.fields import ArrayField
 from gm2m import GM2MField
 from guardian.shortcuts import assign_perm
 from . import api
-from easy_cache import ecached_property
+from .utils import get_wallet_model, get_expires_date
+from easy_cache import ecached_property  # , ecached
+from itertools import chain
+from django.utils import timezone
+
 
 domain = settings.DOMAIN_NAME
 api_key = settings.BLOCKCYPHER_API_KEY
@@ -166,6 +170,40 @@ class BaseWallet(TimeStampedModel, SoftDeletableModel):
         return invoice
 
     @classmethod
+    def get_received_invoices(cls, user, symbol):
+        wallet = get_wallet_model(symbol)
+        if wallet:
+            wallets = wallet.objects.filter(user=user)
+            q = [w.invoice_set.all() for w in wallets]
+            return list(chain(*q))
+
+    @classmethod
+    def get_sended_invoices(cls, user, symbol):
+        wallet = get_wallet_model(symbol)
+        if wallet:
+            wallets = wallet.objects.filter(user=user)
+            q = [w.sended_invoices.all() for w in wallets]
+            return list(chain(*q))
+
+    @classmethod
+    def get_unpaid_received_invoices(cls, user, symbol):
+        invoices = cls.get_received_invoices(user, symbol)
+        if invoices:
+            return len(
+                [i for i in invoices if not i.is_paid and not i.is_expired]
+            )
+        return 0
+
+    @classmethod
+    def get_unpaid_sended_invoices(cls, user, symbol):
+        invoices = cls.get_sended_invoices(user, symbol)
+        if invoices:
+            return len(
+                [i for i in invoices if not i.is_paid and not i.is_expired]
+            )
+        return 0
+
+    @classmethod
     def _get_coin_symbol_and_name(cls):
         if cls.__name__.lower().startswith('btc'):
             coin_symbol = 'btc'
@@ -275,6 +313,10 @@ class Invoice(models.Model):
 
     is_paid = models.BooleanField(default=False)
 
+    expires = models.DateTimeField(
+        default=get_expires_date
+    )
+
     class Meta:
         permissions = (
             ('view_invoice', _('Can view invoice')),
@@ -324,7 +366,13 @@ class Invoice(models.Model):
     def get_absolute_url(self):
         return reverse('wallets:invoice_detail', kwargs={'pk': self.pk})
 
+    @property
+    def is_expired(self):
+        return timezone.now() > self.expires
+
     def can_be_paid(self):
+        if self.is_expired:
+            return False
         if self.tx_refs.all():
             tx_refs_total_amount = 0
             for tx in self.tx_refs.all():

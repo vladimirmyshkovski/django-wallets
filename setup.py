@@ -66,7 +66,8 @@ setup(
         'django-gm2m',
         'psycopg2-binary',
         'django-guardian',
-        'easy_cache'
+        'easy_cache',
+        'django-querysetsequence'
     ],
     license="MIT",
     zip_safe=False,

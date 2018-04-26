@@ -16,6 +16,7 @@ from django.contrib.postgres.fields import ArrayField
 from gm2m import GM2MField
 from guardian.shortcuts import assign_perm
 from . import api
+from easy_cache import ecached_property
 
 domain = settings.DOMAIN_NAME
 api_key = settings.BLOCKCYPHER_API_KEY
@@ -78,7 +79,7 @@ class BaseWallet(TimeStampedModel, SoftDeletableModel):
     def spend_with_webhook(self, addresses, amounts):
         new_transaction = api.not_simple_spend(
             from_privkey=self.private,
-            to_address=addresses,
+            to_addresses=addresses,
             to_satoshis=amounts,
             coin_symbol=self.coin_symbol,
             api_key=settings.BLOCKCYPHER_API_KEY
@@ -90,11 +91,8 @@ class BaseWallet(TimeStampedModel, SoftDeletableModel):
         )
         return new_transaction
 
-    def set_webhook(self,
-                    to_addresses,
-                    transaction,
-                    payload=None,
-                    event='confirmed-tx'):
+    def set_webhook(self, to_addresses, transaction,
+                    payload=None, event='confirmed-tx'):
         if payload:
             payload = signing.dumps(payload)
 
@@ -117,7 +115,7 @@ class BaseWallet(TimeStampedModel, SoftDeletableModel):
         )
         return webhook
 
-    @cached_property
+    @ecached_property('address_details:{self.id}', 60)
     def address_details(self):
         details = blockcypher.get_address_details(
             self.address,
@@ -125,7 +123,7 @@ class BaseWallet(TimeStampedModel, SoftDeletableModel):
         )
         return details
 
-    @cached_property
+    @ecached_property('overview:{self.id}', 60)
     def overview(self):
         overview = blockcypher.get_address_overview(
             self.address,
@@ -133,7 +131,7 @@ class BaseWallet(TimeStampedModel, SoftDeletableModel):
         )
         return overview
 
-    @cached_property
+    @ecached_property('balance:{self.id}', 60)
     def balance(self):
         overview = blockcypher.get_address_overview(
             self.address,
@@ -141,7 +139,7 @@ class BaseWallet(TimeStampedModel, SoftDeletableModel):
         )
         return overview['balance']
 
-    @cached_property
+    @ecached_property('transactions:{self.id}', 60)
     def transactions(self):
         get_address_full = self.address_details
         return get_address_full['txrefs']
@@ -202,7 +200,7 @@ class BaseWallet(TimeStampedModel, SoftDeletableModel):
         json_response = response.json()
         return json_response[0]['price_usd']
 
-    @cached_property
+    @ecached_property('total_balance:{self.id}', 60)
     def total_balance(self):
         balance = 0
         related_name = getattr(

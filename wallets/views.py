@@ -16,7 +16,7 @@ from .signals import get_webhook
 from .mixins import OwnerPermissionsMixin, CheckWalletMixin
 from .models import Invoice
 from .forms import WithdrawForm
-from .services import generate_new_address, get_wallet_invoices
+from .services import generate_new_address
 from django.core.signing import BadSignature, SignatureExpired
 from guardian.mixins import PermissionRequiredMixin, LoginRequiredMixin
 
@@ -152,7 +152,7 @@ class WalletsDetailView(BaseWalletMixin, FormMixin, DetailView):
             kwargs={
                 'wallet': self.kwargs['wallet'],
                 'address': self.kwargs['address']
-                })
+            })
 
 
 class WalletsWebhookView(View):
@@ -200,18 +200,37 @@ class InvoiceListView(LoginRequiredMixin, TemplateView):
         context['symbols'] = symbols
         for symbol in symbols:
             wallet = get_wallet_model(symbol)
+            received_invoices = wallet.get_received_invoices(
+                user=self.request.user,
+                symbol=symbol
+            )
+            context['{}_received_invoices'.format(symbol)] = received_invoices
+            sended_invoices = wallet.get_sended_invoices(
+                user=self.request.user,
+                symbol=symbol
+            )
+            context['{}_sended_invoices'.format(symbol)] = sended_invoices
+            '''
             wallets = wallet.objects.filter(user=self.request.user).all()
             invoices_list = get_wallet_invoices(
                 invoices=Invoice.objects.all(),
                 wallets=wallets,
                 symbol=symbol
             )
-            invoices = '{}_received_invoices'.format(symbol)
-            context[invoices] = invoices_list[invoices]
-            context['len_{}'.format(invoices)] = 0
-            for invoice in invoices_list[invoices]:
+            received_invoices = '{}_received_invoices'.format(symbol)
+            sended_invoices = '{}_sended_invoices'.format(symbol)
+            context[received_invoices] = invoices_list[received_invoices]
+            context[sended_invoices] = invoices_list[sended_invoices]
+            context['len_{}'.format(received_invoices)] = 0
+            context['len_{}'.format(sended_invoices)] = 0
+
+            for invoice in invoices_list[received_invoices]:
                 if not invoice.is_paid:
-                    context['len_{}'.format(invoices)] += 1
+                    context['len_{}'.format(received_invoices)] += 1
+            for invoice in invoices_list[sended_invoices]:
+                if not invoice.is_paid:
+                    context['len_{}'.format(sended_invoices)] += 1
+            '''
         return context
 
 

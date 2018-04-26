@@ -314,12 +314,14 @@ class TestCheckTransactionConfirmations(TestCase):
 
     def setUp(self):
         self.wallet = factories.BtcFactory()
+        self.first = models.Btc.objects.order_by('?').first()
+        self.second = models.Btc.objects.order_by('?').first()
         self.signal = {
             'from_address': '{}'.format(
-                models.Btc.objects.order_by('?').first().address
+                self.first.address
             ),
             'to_addresses': ['{}'.format(
-                models.Btc.objects.order_by('?').first().address
+                self.second.address
             )],
             'symbol': 'btc',
             'event': 'confirmed-tx',
@@ -328,6 +330,7 @@ class TestCheckTransactionConfirmations(TestCase):
         }
 
     def test_with_valid_data(self):
+
         blockcypher.get_address_details = mock.MagicMock(return_value=
             {
                 "address": "1DEP8i3QJCsomS4BSMY2RpU1upv62aGvhD",
@@ -417,8 +420,8 @@ class TestCheckTransactionConfirmations(TestCase):
                 "unconfirmed_txrefs": []
             }
         )
-        ctc = utils.CheckTransactionConfirmations(self.signal)        
-        self.assertFalse(ctc.confirmed)
+        ctc = utils.CheckTransactionConfirmations(self.signal)
+        self.assertTrue(ctc.confirmed)
 
     def test_with_invalid_data(self):
         ctc = utils.CheckTransactionConfirmations('FAKE_SIGNAL')

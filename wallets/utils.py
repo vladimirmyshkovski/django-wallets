@@ -10,6 +10,8 @@ from django.conf import settings
 from django.contrib.contenttypes.models import ContentType
 
 from functools import lru_cache
+from datetime import timedelta
+from django.utils import timezone
 
 domain = settings.DOMAIN_NAME
 api_key = settings.BLOCKCYPHER_API_KEY
@@ -256,3 +258,7 @@ class Converter(object):
         to_price_usd = to_json_response[0]['price_usd']
 
         return float(to_price_usd) / float(from_price_usd)
+
+
+def get_expires_date():
+    return timezone.now() + timedelta(seconds=60*5)

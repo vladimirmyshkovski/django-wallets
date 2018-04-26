@@ -24,7 +24,7 @@ def generate_new_address(user, coin_symbol):
     else:
         return None
 
-
+'''
 def get_wallet_invoices(invoices, wallets, symbol):
     received_invoices = []
     sended_invoices = []
@@ -45,3 +45,4 @@ def get_wallet_invoices(invoices, wallets, symbol):
         '{}_sended_invoices'.format(symbol): sended_invoices
     }
     return result
+'''
