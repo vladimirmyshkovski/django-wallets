@@ -200,7 +200,8 @@ class InvoiceListView(LoginRequiredMixin, TemplateView):
 
     def get_context_data(self, **kwargs):
         context = super(InvoiceListView, self).get_context_data(**kwargs)
-        for symbol in ['btc', 'ltc', 'dash', 'doge', 'bcy']:
+        symbols = ['btc', 'ltc', 'dash', 'doge', 'bcy']
+        for symbol in symbols:
             wallet = get_wallet_model(symbol)
             wallets = wallet.objects.filter(user=self.request.user).all()
             invoices_list = get_wallet_invoices(
@@ -212,6 +213,8 @@ class InvoiceListView(LoginRequiredMixin, TemplateView):
                 symbol)] = invoices_list['{}_received_invoices'.format(symbol)]
             context['{}_sended_invoices'.format(
                 symbol)] = invoices_list['{}_sended_invoices'.format(symbol)]
+            context['symbols'] = symbols
+            print(context['symbols'])
         return context
 
 

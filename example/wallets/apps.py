@@ -6,7 +6,6 @@ class WalletsConfig(AppConfig):
     verbose_name = 'Wallets'
 
     def ready(self):
-        print('hello')
         from . import signals
         from . import models
         models.Invoice.receiver_wallet_object.add_relation(models.Btc)

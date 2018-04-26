@@ -65,8 +65,8 @@ setup(
         #'requests==2.4.3',
         'django-gm2m',
         'psycopg2-binary',
-        'django-guardian'
-
+        'django-guardian',
+        'easy_cache'
     ],
     license="MIT",
     zip_safe=False,

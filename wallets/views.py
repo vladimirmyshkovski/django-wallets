@@ -9,10 +9,9 @@ from django.views.generic import (DetailView, ListView, RedirectView,
 from django.views.generic.edit import FormMixin
 from django.views.decorators.csrf import csrf_exempt
 from django.shortcuts import get_object_or_404
-#from django.contrib.auth.mixins import LoginRequiredMixin
 from .utils import (get_wallet_model, decode_signin,
                     extract_webhook_id, unsubscribe_from_webhook,
-                    validate_signin)
+                    validate_signin, to_satoshi)
 from .signals import get_webhook
 from .mixins import OwnerPermissionsMixin, CheckWalletMixin
 from .models import Invoice
@@ -20,9 +19,6 @@ from .forms import WithdrawForm
 from .services import generate_new_address, get_wallet_invoices
 from django.core.signing import BadSignature, SignatureExpired
 from guardian.mixins import PermissionRequiredMixin, LoginRequiredMixin
-
-#from django.contrib.auth.mixins import (PermissionRequiredMixin,
-#                                        LoginRequiredMixin)
 
 
 try:
@@ -200,7 +196,9 @@ class InvoiceListView(LoginRequiredMixin, TemplateView):
 
     def get_context_data(self, **kwargs):
         context = super(InvoiceListView, self).get_context_data(**kwargs)
-        for symbol in ['btc', 'ltc', 'dash', 'doge', 'bcy']:
+        symbols = ['btc', 'ltc', 'dash', 'doge', 'bcy']
+        context['symbols'] = symbols
+        for symbol in symbols:
             wallet = get_wallet_model(symbol)
             wallets = wallet.objects.filter(user=self.request.user).all()
             invoices_list = get_wallet_invoices(
@@ -208,10 +206,12 @@ class InvoiceListView(LoginRequiredMixin, TemplateView):
                 wallets=wallets,
                 symbol=symbol
             )
-            context['{}_received_invoices'.format(
-                symbol)] = invoices_list['{}_received_invoices'.format(symbol)]
-            context['{}_sended_invoices'.format(
-                symbol)] = invoices_list['{}_sended_invoices'.format(symbol)]
+            invoices = '{}_received_invoices'.format(symbol)
+            context[invoices] = invoices_list[invoices]
+            context['len_{}'.format(invoices)] = 0
+            for invoice in invoices_list[invoices]:
+                if not invoice.is_paid:
+                    context['len_{}'.format(invoices)] += 1
         return context
 
 
@@ -232,15 +232,17 @@ class InvoicePayView(LoginRequiredMixin, PermissionRequiredMixin, DetailView):
     def get(self, *args, **kwargs):
         invoice = get_object_or_404(Invoice, pk=self.kwargs['pk'])
         if self.request.user.has_perm('pay_invoice', invoice):
-            invoice.pay()
-            if _messages:
-                last_tx_ref = invoice.tx_refs.last()
-                transaction = last_tx_ref.tx_ref
-                messages.success(
-                    self.request,
-                    _('''The account was successfully sent.
-                         Wait for transaction {}
-                         confirmation.'''.format(transaction))
-                )
+            amounts_sum = to_satoshi(float(sum(invoice.amount)))
+            if invoice.sender_wallet_object.balance >= amounts_sum:
+                invoice.pay()
+                if _messages:
+                    last_tx_ref = invoice.tx_refs.last()
+                    transaction = last_tx_ref.tx_ref
+                    messages.success(
+                        self.request,
+                        _('''The account was successfully sent.
+                             Wait for transaction {}
+                             confirmation.'''.format(transaction))
+                    )
         redirect(reverse('wallets:invoice_detail', kwargs={'pk': invoice.pk}))
         return super().get(*args, **kwargs)
