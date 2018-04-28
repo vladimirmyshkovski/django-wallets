@@ -2,7 +2,7 @@ from django.conf import settings
 from django.utils.decorators import method_decorator
 from django.utils.translation import ugettext_lazy as _
 from django.http import JsonResponse, Http404
-from django.urls import reverse
+from django.urls import reverse, reverse_lazy
 from django.shortcuts import redirect
 from django.views.generic import (DetailView, ListView, RedirectView,
                                   View, TemplateView, DeleteView)
@@ -248,6 +248,7 @@ class InvoiceDeleteView(LoginRequiredMixin,
     model = Invoice
     permission_required = ['wallets.pay_invoice']
     raise_exception = True
+    success_url = reverse_lazy('wallets:invoice_list')
 
 
 class InvoicePayView(LoginRequiredMixin, PermissionRequiredMixin, DetailView):
@@ -259,8 +260,12 @@ class InvoicePayView(LoginRequiredMixin, PermissionRequiredMixin, DetailView):
     def get(self, *args, **kwargs):
         invoice = get_object_or_404(Invoice, pk=self.kwargs['pk'])
         if self.request.user.has_perm('pay_invoice', invoice):
-            amounts_sum = to_satoshi(float(sum(invoice.amount)))
-            if invoice.sender_wallet_object.balance >= amounts_sum:
+            amounts_sum = sum(invoice.amount)
+            balance = to_satoshi(float(invoice.sender_wallet_object.balance))
+            if invoice.is_expired:
+                if _messages:
+                    messages.error(self.request, _('Invoice expired'))
+            if balance >= amounts_sum:
                 invoice.pay()
                 if _messages:
                     last_tx_ref = invoice.tx_refs.last()

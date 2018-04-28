@@ -231,6 +231,56 @@ class BaseWallet(TimeStampedModel, SoftDeletableModel):
         return cls._get_coin_symbol_and_name()['coin_name']
 
     @classmethod
+    def get_total_user_balance(cls, user):
+        total_balance = 0
+        btc = user.btc_wallets.first()
+        ltc = user.ltc_wallets.first()
+        dash = user.dash_wallets.first()
+        doge = user.doge_wallets.first()
+        bcy = user.bcy_wallets.first()
+
+        if btc:
+            total_balance += btc.total_balance
+
+        if ltc:
+            total_balance += ltc.total_balance
+
+        if dash:
+            total_balance += dash.total_balance
+
+        if doge:
+            total_balance += doge.total_balance
+
+        if bcy:
+            total_balance += bcy.total_balance
+        return total_balance
+
+    @classmethod
+    def get_total_user_usd_balance(cls, user):
+        total_balance = 0
+        btc = user.btc_wallets.first()
+        ltc = user.ltc_wallets.first()
+        dash = user.dash_wallets.first()
+        doge = user.doge_wallets.first()
+        bcy = user.bcy_wallets.first()
+
+        if btc:
+            total_balance += btc.total_usd_balance
+
+        if ltc:
+            total_balance += ltc.total_usd_balance
+
+        if dash:
+            total_balance += dash.total_usd_balance
+
+        if doge:
+            total_balance += doge.total_usd_balance
+
+        if bcy:
+            total_balance += bcy.total_usd_balance
+        return total_balance
+
+    @classmethod
     def get_rate(cls):
         coin_name = cls.get_coin_name()
         response = requests.get(
@@ -253,6 +303,22 @@ class BaseWallet(TimeStampedModel, SoftDeletableModel):
         for address in queryset():
             balance += address.balance
         return balance
+
+    @ecached_property('total_balance:{self.id}', 60)
+    def total_usd_balance(self):
+        balance = 0
+        related_name = getattr(
+            self.user,
+            '{}_wallets'.format(self.coin_symbol)
+        )
+        queryset = getattr(
+            related_name,
+            'all'
+        )
+
+        for address in queryset():
+            balance += address.balance
+        return balance * self.get_rate()
 
 
 @python_2_unicode_compatible
