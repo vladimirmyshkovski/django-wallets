@@ -419,9 +419,13 @@ class Invoice(TimeStampedModel, SoftDeletableModel):
 
     def pay(self):
         if self.sender_wallet_object.user.has_perm('pay_invoice', self):
+            wallets = self.receiver_wallet_object.all()
+            addresses = [wallet.address for wallet in wallets]
+            amounts = [amount for amount in self.amount]
             tx_ref = self.sender_wallet_object.spend_with_webhook(
-                [wallet.address for wallet in self.receiver_wallet_object.all()],
-                [amount for amount in self.amount])
+                addresses=addresses,
+                amounts=amounts
+            )
             invoice_transaction = InvoiceTransaction.objects.create(
                 invoice=self,
                 tx_ref=tx_ref

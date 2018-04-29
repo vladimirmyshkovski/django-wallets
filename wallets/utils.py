@@ -261,4 +261,4 @@ class Converter(object):
 
 
 def get_expires_date():
-    return timezone.now() + timedelta(seconds=60*5)
+    return timezone.now() + timedelta(seconds=60*60)
