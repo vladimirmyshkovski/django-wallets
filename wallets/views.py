@@ -159,9 +159,11 @@ class WalletsWebhookView(View):
     http_method_names = [u'post']
 
     def post(self, request, *args, **kwargs):
+        print('HELLO')
         try:
             signature = kwargs['signature']
             sign = decode_signin(signature)
+            print('PAYLOAD IS: ' + str(sign['payload']))
             validate_signin(sign)
             get_webhook.send(
                 sender=None,
@@ -173,6 +175,7 @@ class WalletsWebhookView(View):
                 payload=sign['payload']
             )
             webhook_id = extract_webhook_id(signature, sign['symbol'])
+            print('WEBHOOK ID: ' + str(webhook_id))
             if webhook_id:
                 unsubscribe_from_webhook(
                     webhook_id, sign['symbol']
