@@ -253,7 +253,7 @@ class InvoiceDetailView(LoginRequiredMixin, PermissionRequiredMixin,
         if self.request.POST:
             return self.form_class(data=self.request.POST)
         else:
-            return self.form_class(initial={'payload': ''})
+            return self.form_class
 
     def get_context_data(self, **kwargs):
         context = super(InvoiceDetailView, self).get_context_data(**kwargs)
