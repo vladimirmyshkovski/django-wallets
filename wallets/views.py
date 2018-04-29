@@ -165,6 +165,7 @@ class WalletsWebhookView(View):
             sign = decode_signin(signature)
             print('PAYLOAD IS: ' + str(sign['payload']))
             validate_signin(sign)
+            print('IS VALID')
             get_webhook.send(
                 sender=None,
                 from_address=sign['from_address'],
@@ -174,6 +175,7 @@ class WalletsWebhookView(View):
                 transaction_id=sign['transaction_id'],
                 payload=sign['payload']
             )
+            print("SIGNAL SENT")
             webhook_id = extract_webhook_id(signature, sign['symbol'])
             print('WEBHOOK ID: ' + str(webhook_id))
             if webhook_id:
