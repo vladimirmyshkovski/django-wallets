@@ -55,7 +55,7 @@ class WithdrawForm(forms.Form):
 
 
 class PayForm(forms.Form):
-    payload = forms.CharField(widget=forms.HiddenInput(), required=False)
+    payload = forms.CharField(required=False)
 
     def clean_payload(self):
         JSON_data = self.cleaned_data['payload']
