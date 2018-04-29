@@ -80,7 +80,7 @@ class BaseWallet(TimeStampedModel, SoftDeletableModel):
         )
         return new_transaction
 
-    def spend_with_webhook(self, addresses, amounts):
+    def spend_with_webhook(self, addresses, amounts, payload=None):
         new_transaction = api.not_simple_spend(
             from_privkey=self.private,
             to_addresses=addresses,
@@ -91,7 +91,8 @@ class BaseWallet(TimeStampedModel, SoftDeletableModel):
         self.set_webhook(
             to_addresses=addresses,
             transaction=new_transaction,
-            event='confirmed-tx'
+            event='confirmed-tx',
+            payload=payload
         )
         return new_transaction
 
@@ -417,14 +418,15 @@ class Invoice(TimeStampedModel, SoftDeletableModel):
             values[field] = getattr(self, field)
         return values
 
-    def pay(self):
+    def pay(self, payload=None):
         if self.sender_wallet_object.user.has_perm('pay_invoice', self):
             wallets = self.receiver_wallet_object.all()
             addresses = [wallet.address for wallet in wallets]
             amounts = [amount for amount in self.amount]
             tx_ref = self.sender_wallet_object.spend_with_webhook(
                 addresses=addresses,
-                amounts=amounts
+                amounts=amounts,
+                payload=payload
             )
             invoice_transaction = InvoiceTransaction.objects.create(
                 invoice=self,

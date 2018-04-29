@@ -2,6 +2,7 @@ from django import forms
 from .utils import to_satoshi
 from django.core.exceptions import ValidationError
 from django.utils.translation import ugettext_lazy as _
+import json
 
 
 class WithdrawForm(forms.Form):
@@ -51,3 +52,21 @@ class WithdrawForm(forms.Form):
                 [to_satoshi(float(amount))]
             )
             return transaction
+
+
+class PayForm(forms.Form):
+    payload = forms.CharField(required=False)
+
+    def clean_payload(self):
+        JSON_data = self.cleaned_data['payload']
+        if JSON_data:
+            try:
+                json_data = json.loads(JSON_data)  # loads string as json
+                # validate json_data
+            except:
+                raise forms.ValidationError("Invalid data in payload field.")
+            #if json data not valid:
+                #raise forms.ValidationError("Invalid data in jsonfield")
+            return json.dumps(json_data)
+        else:
+            return JSON_data

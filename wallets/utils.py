@@ -106,7 +106,7 @@ def extract_webhook_id(signature, coin_symbol):
     for webhook in webhooks:
         if webhook['url'].endswith(signature + '/'):
             webhook_id = webhook['id']
-            return (webhook_id)
+            return webhook_id
     return webhook_id
 
 

@@ -144,7 +144,7 @@ class TestWithdrawForm(TestCase):
         )
 
         obj = factories.BcyFactory()
-        form_data = {'address': 'BvuiwCe7WZ8eD4P7ZNRs6zEU3K2okdNYm93'}
+        form_data = {'address': obj.address}
         form = forms.WithdrawForm(data=form_data, obj=obj)
         error = form['address'].errors
         self.assertEqual(
@@ -210,4 +210,83 @@ class TestWithdrawForm(TestCase):
         self.assertEqual(
             transaction,
             None
+        )
+
+
+class TestPayForm(TestCase):
+
+    def setUp(self):
+        self.user = factories.UserFactory()
+        self.bcy = factories.BcyFactory(user=self.user)
+        self.invoice = factories.BcyInvoiceFactory(
+            sender_wallet_object=self.bcy,
+            amount=[1]
+            )
+        self.invoice.receiver_wallet_object.add(self.bcy)
+        self.form = forms.PayForm()
+
+    def test_payload_field_label(self):
+        self.assertEqual(
+            self.form.fields['payload'].label,
+            None
+        )
+
+    def test_payload_field_help_text(self):
+        self.assertEqual(
+            self.form.fields['payload'].help_text,
+            ''
+        )
+
+    def test_payload_field_with_valid_data(self):
+
+        def cmp(a, b):
+            return (a > b) - (a < b)
+        import json
+        data = json.dumps({
+                'membership_id': 1,
+                'invoice_id': 1,
+                'sender_user_id': 1,
+                'queue_id': 1
+            })
+        form_data = {
+            'payload': data
+        }
+        form = forms.PayForm(data=form_data)
+
+        self.assertTrue(form.is_valid())
+        self.assertEqual(
+            cmp(form.cleaned_data['payload'], data),
+            0
+        )
+
+        data = ''
+        form_data = {'payload': data}
+        form = forms.PayForm(data=form_data)
+        self.assertTrue(form.is_valid())
+        self.assertTrue('payload' in form.cleaned_data)
+        self.assertEqual(
+            form.cleaned_data['payload'],
+            ''
+        )
+
+        form_data = {
+            'payload': {}
+        }
+        form = forms.PayForm(data=form_data)
+        self.assertTrue(form.is_valid())
+        self.assertEqual(
+            form.cleaned_data['payload'],
+            ''
+        )
+
+    def test_paylaod_field_with_invalid_data(self):
+        data = '1 1232 13 123123'
+        form_data = {'payload': data}
+        form = forms.PayForm(data=form_data)
+        self.assertFalse(form.is_valid())
+        self.assertFalse('payload' in form.cleaned_data)
+        error = form['payload'].errors
+        self.assertEqual(
+            error.as_text(),
+            '* Invalid data in payload field.'
         )

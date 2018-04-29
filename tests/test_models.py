@@ -291,7 +291,6 @@ class TestBtc(TestCase):
             }
         )
         address_details = self.btc.address_details
-        print(address_details)
         self.assertEqual(
             type(address_details),
             type({})

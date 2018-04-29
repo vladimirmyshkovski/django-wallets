@@ -28,11 +28,11 @@ urlpatterns = [
         view=views.InvoiceDetailView.as_view(),
         name='invoice_detail'
     ),
-    re_path(
-        r'^invoices/(?P<pk>\d+)/_pay/$',
-        view=views.InvoicePayView.as_view(),
-        name='invoice_pay'
-    ),
+    #re_path(
+    #    r'^invoices/(?P<pk>\d+)/_pay/$',
+    #    view=views.InvoicePayView.as_view(),
+    #    name='invoice_pay'
+    #),
     re_path(
         r'^invoices/(?P<pk>\d+)/_delete/$',
         view=views.InvoiceDeleteView.as_view(),
