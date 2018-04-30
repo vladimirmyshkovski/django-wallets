@@ -19,7 +19,9 @@ from .forms import WithdrawForm, PayForm
 from .services import generate_new_address
 from django.core.signing import BadSignature, SignatureExpired
 from guardian.mixins import PermissionRequiredMixin, LoginRequiredMixin
+import logging
 
+logger = logging.getLogger(__name__)
 
 try:
     _messages = 'django.contrib.messages' in settings.INSTALLED_APPS
@@ -159,7 +161,6 @@ class WalletsWebhookView(View):
     http_method_names = [u'post']
 
     def post(self, request, *args, **kwargs):
-        print('HELLO')
         try:
             signature = kwargs['signature']
             sign = decode_signin(signature)
@@ -183,7 +184,7 @@ class WalletsWebhookView(View):
                     webhook_id, sign['symbol']
                 )
         except:
-            return JsonResponse({}, status=200)    
+            pass
         #except BadSignature:
         #    pass
         #except SignatureExpired:

@@ -16,7 +16,11 @@ from django.contrib.postgres.fields import ArrayField
 from gm2m import GM2MField
 from guardian.shortcuts import assign_perm
 from . import api
-from easy_cache import ecached_property
+from .utils import get_wallet_model, get_expires_date, from_satoshi
+from easy_cache import ecached_property  # , ecached
+from itertools import chain
+from django.utils import timezone
+
 
 domain = settings.DOMAIN_NAME
 api_key = settings.BLOCKCYPHER_API_KEY
@@ -76,7 +80,7 @@ class BaseWallet(TimeStampedModel, SoftDeletableModel):
         )
         return new_transaction
 
-    def spend_with_webhook(self, addresses, amounts):
+    def spend_with_webhook(self, addresses, amounts, payload=None):
         new_transaction = api.not_simple_spend(
             from_privkey=self.private,
             to_addresses=addresses,
@@ -87,7 +91,8 @@ class BaseWallet(TimeStampedModel, SoftDeletableModel):
         self.set_webhook(
             to_addresses=addresses,
             transaction=new_transaction,
-            event='confirmed-tx'
+            event='confirmed-tx',
+            payload=payload
         )
         return new_transaction
 
@@ -95,7 +100,6 @@ class BaseWallet(TimeStampedModel, SoftDeletableModel):
                     payload=None, event='confirmed-tx'):
         if payload:
             payload = signing.dumps(payload)
-
         signature = signing.dumps({
             'from_address': self.address,
             'to_addresses': to_addresses,
@@ -166,6 +170,40 @@ class BaseWallet(TimeStampedModel, SoftDeletableModel):
         return invoice
 
     @classmethod
+    def get_received_invoices(cls, user, symbol):
+        wallet = get_wallet_model(symbol)
+        if wallet:
+            wallets = wallet.objects.filter(user=user)
+            q = [w.invoice_set.all() for w in wallets]
+            return list(chain(*q))
+
+    @classmethod
+    def get_sended_invoices(cls, user, symbol):
+        wallet = get_wallet_model(symbol)
+        if wallet:
+            wallets = wallet.objects.filter(user=user)
+            q = [w.sended_invoices.all() for w in wallets]
+            return list(chain(*q))
+
+    @classmethod
+    def get_unpaid_received_invoices(cls, user, symbol):
+        invoices = cls.get_received_invoices(user, symbol)
+        if invoices:
+            return len(
+                [i for i in invoices if not i.is_paid and not i.is_expired]
+            )
+        return 0
+
+    @classmethod
+    def get_unpaid_sended_invoices(cls, user, symbol):
+        invoices = cls.get_sended_invoices(user, symbol)
+        if invoices:
+            return len(
+                [i for i in invoices if not i.is_paid and not i.is_expired]
+            )
+        return 0
+
+    @classmethod
     def _get_coin_symbol_and_name(cls):
         if cls.__name__.lower().startswith('btc'):
             coin_symbol = 'btc'
@@ -193,6 +231,56 @@ class BaseWallet(TimeStampedModel, SoftDeletableModel):
         return cls._get_coin_symbol_and_name()['coin_name']
 
     @classmethod
+    def get_total_user_balance(cls, user):
+        total_balance = 0
+        btc = user.btc_wallets.first()
+        ltc = user.ltc_wallets.first()
+        dash = user.dash_wallets.first()
+        doge = user.doge_wallets.first()
+        bcy = user.bcy_wallets.first()
+
+        if btc:
+            total_balance += btc.total_balance
+
+        if ltc:
+            total_balance += ltc.total_balance
+
+        if dash:
+            total_balance += dash.total_balance
+
+        if doge:
+            total_balance += doge.total_balance
+
+        if bcy:
+            total_balance += bcy.total_balance
+        return total_balance
+
+    @classmethod
+    def get_total_user_usd_balance(cls, user):
+        total_balance = 0
+        btc = user.btc_wallets.first()
+        ltc = user.ltc_wallets.first()
+        dash = user.dash_wallets.first()
+        doge = user.doge_wallets.first()
+        bcy = user.bcy_wallets.first()
+
+        if btc:
+            total_balance += btc.total_usd_balance
+
+        if ltc:
+            total_balance += ltc.total_usd_balance
+
+        if dash:
+            total_balance += dash.total_usd_balance
+
+        if doge:
+            total_balance += doge.total_usd_balance
+
+        if bcy:
+            total_balance += bcy.total_usd_balance
+        return total_balance
+
+    @classmethod
     def get_rate(cls):
         coin_name = cls.get_coin_name()
         response = requests.get(
@@ -215,6 +303,22 @@ class BaseWallet(TimeStampedModel, SoftDeletableModel):
         for address in queryset():
             balance += address.balance
         return balance
+
+    @ecached_property('total_balance:{self.id}', 60)
+    def total_usd_balance(self):
+        balance = 0
+        related_name = getattr(
+            self.user,
+            '{}_wallets'.format(self.coin_symbol)
+        )
+        queryset = getattr(
+            related_name,
+            'all'
+        )
+
+        for address in queryset():
+            balance += address.balance
+        return balance * self.get_rate()
 
 
 @python_2_unicode_compatible
@@ -247,7 +351,7 @@ class Bcy(BaseWallet):
 
 
 @python_2_unicode_compatible
-class Invoice(models.Model):
+class Invoice(TimeStampedModel, SoftDeletableModel):
 
     limit = models.Q(app_label='wallets', model='btc') | \
         models.Q(app_label='wallets', model='ltc') | \
@@ -275,6 +379,10 @@ class Invoice(models.Model):
 
     is_paid = models.BooleanField(default=False)
 
+    expires = models.DateTimeField(
+        default=get_expires_date
+    )
+
     class Meta:
         permissions = (
             ('view_invoice', _('Can view invoice')),
@@ -285,6 +393,14 @@ class Invoice(models.Model):
         super(Invoice, self).__init__(*args, **kwargs)
         self.__tracked_fields = ['is_paid']
         self.set_original_values()
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        if self.has_changed():
+            if not self.can_be_paid():
+                self.reset_original_values()
+        self.set_original_values()
+        return super(Invoice, self).save(*args, **kwargs)        
 
     def set_original_values(self):
         for field in self.__tracked_fields:
@@ -309,11 +425,16 @@ class Invoice(models.Model):
             values[field] = getattr(self, field)
         return values
 
-    def pay(self):
+    def pay(self, payload=None):
         if self.sender_wallet_object.user.has_perm('pay_invoice', self):
+            wallets = self.receiver_wallet_object.all()
+            addresses = [wallet.address for wallet in wallets]
+            amounts = [amount for amount in self.amount]
             tx_ref = self.sender_wallet_object.spend_with_webhook(
-                [wallet.address for wallet in self.receiver_wallet_object.all()],
-                [amount for amount in self.amount])
+                addresses=addresses,
+                amounts=amounts,
+                payload=payload
+            )
             invoice_transaction = InvoiceTransaction.objects.create(
                 invoice=self,
                 tx_ref=tx_ref
@@ -324,7 +445,13 @@ class Invoice(models.Model):
     def get_absolute_url(self):
         return reverse('wallets:invoice_detail', kwargs={'pk': self.pk})
 
+    @property
+    def is_expired(self):
+        return timezone.now() > self.expires
+
     def can_be_paid(self):
+        if self.is_expired:
+            return False
         if self.tx_refs.all():
             tx_refs_total_amount = 0
             for tx in self.tx_refs.all():
@@ -337,13 +464,9 @@ class Invoice(models.Model):
             return True
         return False
 
-    def save(self, *args, **kwargs):
-        self.full_clean()
-        if self.has_changed():
-            if not self.can_be_paid():
-                self.reset_original_values()
-        self.set_original_values()
-        return super(Invoice, self).save(*args, **kwargs)
+    @ecached_property('normal_amount:{self.id}', 60*5)
+    def normal_amount(self):
+        return from_satoshi(self.amount)
 
 
 @python_2_unicode_compatible
