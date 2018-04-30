@@ -176,12 +176,12 @@ class WalletsWebhookView(View):
             payload=sign['payload']
         )
         print("SIGNAL SENT")
-        webhook_id = extract_webhook_id(signature, sign['symbol'])
-        print('WEBHOOK ID: ' + str(webhook_id))
-        if webhook_id:
-            unsubscribe_from_webhook(
-                webhook_id, sign['symbol']
-            )
+        #webhook_id = extract_webhook_id(signature, sign['symbol'])
+        #print('WEBHOOK ID: ' + str(webhook_id))
+        #if webhook_id:
+        #    unsubscribe_from_webhook(
+        #        webhook_id, sign['symbol']
+        #    )
         #except BadSignature:
         #    pass
         #except SignatureExpired:
