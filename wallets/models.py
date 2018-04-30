@@ -100,9 +100,6 @@ class BaseWallet(TimeStampedModel, SoftDeletableModel):
                     payload=None, event='confirmed-tx'):
         if payload:
             payload = signing.dumps(payload)
-
-        print('PAYLOAD: ' + str(payload))
-
         signature = signing.dumps({
             'from_address': self.address,
             'to_addresses': to_addresses,

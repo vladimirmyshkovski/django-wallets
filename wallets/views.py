@@ -160,28 +160,30 @@ class WalletsWebhookView(View):
 
     def post(self, request, *args, **kwargs):
         print('HELLO')
-        #try:
-        signature = kwargs['signature']
-        sign = decode_signin(signature)
-        print('PAYLOAD IS: ' + str(sign['payload']))
-        validate_signin(sign)
-        print('IS VALID')
-        get_webhook.send(
-            sender=None,
-            from_address=sign['from_address'],
-            to_addresses=sign['to_addresses'],
-            symbol=sign['symbol'],
-            event=sign['event'],
-            transaction_id=sign['transaction_id'],
-            payload=sign['payload']
-        )
-        print("SIGNAL SENT")
-        #webhook_id = extract_webhook_id(signature, sign['symbol'])
-        #print('WEBHOOK ID: ' + str(webhook_id))
-        #if webhook_id:
-        #    unsubscribe_from_webhook(
-        #        webhook_id, sign['symbol']
-        #    )
+        try:
+            signature = kwargs['signature']
+            sign = decode_signin(signature)
+            print('PAYLOAD IS: ' + str(sign['payload']))
+            validate_signin(sign)
+            print('IS VALID')
+            get_webhook.send(
+                sender=None,
+                from_address=sign['from_address'],
+                to_addresses=sign['to_addresses'],
+                symbol=sign['symbol'],
+                event=sign['event'],
+                transaction_id=sign['transaction_id'],
+                payload=sign['payload']
+            )
+            print("SIGNAL SENT")
+            webhook_id = extract_webhook_id(signature, sign['symbol'])
+            print('WEBHOOK ID: ' + str(webhook_id))
+            if webhook_id:
+                unsubscribe_from_webhook(
+                    webhook_id, sign['symbol']
+                )
+        except:
+            return JsonResponse({}, status=200)    
         #except BadSignature:
         #    pass
         #except SignatureExpired:
@@ -275,16 +277,23 @@ class InvoiceDetailView(LoginRequiredMixin, PermissionRequiredMixin,
 
             if balance >= amounts_sum:
                 payload = self.payload
-                self.object.pay(payload)
-                if _messages:
-                    last_tx_ref = self.object.tx_refs.last()
-                    transaction = last_tx_ref.tx_ref
-                    messages.success(
-                        self.request,
-                        _('''The account was successfully sent.
-                             Wait for transaction {}
-                             confirmation.'''.format(transaction))
-                    )
+                try:
+                    self.object.pay(payload)
+                    if _messages:
+                        last_tx_ref = self.object.tx_refs.last()
+                        transaction = last_tx_ref.tx_ref
+                        messages.success(
+                            self.request,
+                            _('''The account was successfully sent.
+                                 Wait for transaction {}
+                                confirmation.'''.format(transaction))
+                        )
+                except:
+                    if _messages:
+                        messages.error(
+                            self.request,
+                            _('Something went wrong. Try again later')
+                        )
             else:
                 if _messages:
                     messages.error(
