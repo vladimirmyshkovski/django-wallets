@@ -91,13 +91,13 @@ class BaseWallet(TimeStampedModel, SoftDeletableModel):
         self.set_webhook(
             to_addresses=addresses,
             transaction=new_transaction,
-            event='confirmed-tx',
+            event='tx-confirmation',
             payload=payload
         )
         return new_transaction
 
     def set_webhook(self, to_addresses, transaction,
-                    payload=None, event='confirmed-tx'):
+                    payload=None, event='tx-confirmation'):
         if payload:
             payload = signing.dumps(payload)
         signature = signing.dumps({

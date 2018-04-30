@@ -17,11 +17,8 @@ from .mixins import OwnerPermissionsMixin, CheckWalletMixin
 from .models import Invoice
 from .forms import WithdrawForm, PayForm
 from .services import generate_new_address
-from django.core.signing import BadSignature, SignatureExpired
 from guardian.mixins import PermissionRequiredMixin, LoginRequiredMixin
-import logging
 
-logger = logging.getLogger(__name__)
 
 try:
     _messages = 'django.contrib.messages' in settings.INSTALLED_APPS
@@ -164,9 +161,7 @@ class WalletsWebhookView(View):
         try:
             signature = kwargs['signature']
             sign = decode_signin(signature)
-            print('PAYLOAD IS: ' + str(sign['payload']))
             validate_signin(sign)
-            print('IS VALID')
             get_webhook.send(
                 sender=None,
                 from_address=sign['from_address'],
@@ -176,19 +171,13 @@ class WalletsWebhookView(View):
                 transaction_id=sign['transaction_id'],
                 payload=sign['payload']
             )
-            print("SIGNAL SENT")
             webhook_id = extract_webhook_id(signature, sign['symbol'])
-            print('WEBHOOK ID: ' + str(webhook_id))
             if webhook_id:
                 unsubscribe_from_webhook(
                     webhook_id, sign['symbol']
                 )
         except:
             pass
-        #except BadSignature:
-        #    pass
-        #except SignatureExpired:
-        #    pass
         return JsonResponse({}, status=200)
 
     @method_decorator(csrf_exempt)
