@@ -160,32 +160,32 @@ class WalletsWebhookView(View):
 
     def post(self, request, *args, **kwargs):
         print('HELLO')
-        try:
-            signature = kwargs['signature']
-            sign = decode_signin(signature)
-            print('PAYLOAD IS: ' + str(sign['payload']))
-            validate_signin(sign)
-            print('IS VALID')
-            get_webhook.send(
-                sender=None,
-                from_address=sign['from_address'],
-                to_addresses=sign['to_addresses'],
-                symbol=sign['symbol'],
-                event=sign['event'],
-                transaction_id=sign['transaction_id'],
-                payload=sign['payload']
+        #try:
+        signature = kwargs['signature']
+        sign = decode_signin(signature)
+        print('PAYLOAD IS: ' + str(sign['payload']))
+        validate_signin(sign)
+        print('IS VALID')
+        get_webhook.send(
+            sender=None,
+            from_address=sign['from_address'],
+            to_addresses=sign['to_addresses'],
+            symbol=sign['symbol'],
+            event=sign['event'],
+            transaction_id=sign['transaction_id'],
+            payload=sign['payload']
+        )
+        print("SIGNAL SENT")
+        webhook_id = extract_webhook_id(signature, sign['symbol'])
+        print('WEBHOOK ID: ' + str(webhook_id))
+        if webhook_id:
+            unsubscribe_from_webhook(
+                webhook_id, sign['symbol']
             )
-            print("SIGNAL SENT")
-            webhook_id = extract_webhook_id(signature, sign['symbol'])
-            print('WEBHOOK ID: ' + str(webhook_id))
-            if webhook_id:
-                unsubscribe_from_webhook(
-                    webhook_id, sign['symbol']
-                )
-        except BadSignature:
-            pass
-        except SignatureExpired:
-            pass
+        #except BadSignature:
+        #    pass
+        #except SignatureExpired:
+        #    pass
         return JsonResponse({}, status=200)
 
     @method_decorator(csrf_exempt)

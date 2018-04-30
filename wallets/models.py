@@ -16,7 +16,7 @@ from django.contrib.postgres.fields import ArrayField
 from gm2m import GM2MField
 from guardian.shortcuts import assign_perm
 from . import api
-from .utils import get_wallet_model, get_expires_date
+from .utils import get_wallet_model, get_expires_date, from_satoshi
 from easy_cache import ecached_property  # , ecached
 from itertools import chain
 from django.utils import timezone
@@ -100,6 +100,8 @@ class BaseWallet(TimeStampedModel, SoftDeletableModel):
                     payload=None, event='confirmed-tx'):
         if payload:
             payload = signing.dumps(payload)
+
+        print('PAYLOAD: ' + str(payload))
 
         signature = signing.dumps({
             'from_address': self.address,
@@ -395,6 +397,14 @@ class Invoice(TimeStampedModel, SoftDeletableModel):
         self.__tracked_fields = ['is_paid']
         self.set_original_values()
 
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        if self.has_changed():
+            if not self.can_be_paid():
+                self.reset_original_values()
+        self.set_original_values()
+        return super(Invoice, self).save(*args, **kwargs)        
+
     def set_original_values(self):
         for field in self.__tracked_fields:
             if getattr(self, field) is 'True':
@@ -457,13 +467,9 @@ class Invoice(TimeStampedModel, SoftDeletableModel):
             return True
         return False
 
-    def save(self, *args, **kwargs):
-        self.full_clean()
-        if self.has_changed():
-            if not self.can_be_paid():
-                self.reset_original_values()
-        self.set_original_values()
-        return super(Invoice, self).save(*args, **kwargs)
+    @ecached_property('normal_amount:{self.id}', 60*5)
+    def normal_amount(self):
+        return from_satoshi(self.amount)
 
 
 @python_2_unicode_compatible
