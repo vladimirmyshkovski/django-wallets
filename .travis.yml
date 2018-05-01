@@ -8,6 +8,8 @@ python:
 env: 
   - TOX_ENV=py35-django-110
   - TOX_ENV=py34-django-110
+  - DEFAULT_BLOCKCYPHER_API_KEY=75ada547a1524310971733088eb068ec
+  - DOMAIN_NAME=example.com
 
 matrix:
   fast_finish: true
