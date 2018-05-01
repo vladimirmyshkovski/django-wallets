@@ -68,6 +68,7 @@ setup(
         'django-guardian',
         'easy_cache',
         'django-environ'
+        'behave_django'
         #'django-querysetsequence'
     ],
     license="MIT",

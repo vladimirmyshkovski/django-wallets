@@ -41,7 +41,6 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "guardian",
     #"guardian.models.UserObjectPermission",
-    "gm2m",
     "wallets",
     "behave_django",
 ]
