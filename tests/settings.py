@@ -11,13 +11,13 @@ USE_TZ = True
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = "jz-l=bwiy@@*%!h*dw9fw)5zbp%$je)=j$@&xmh_jm1b$jpo**"
 
-#DATABASES = {
-#    "default": {
-#        "ENGINE": "django.db.backends.sqlite3",
-#        "NAME": ":memory:",
-#    }
-#}
-
+DATABASES = {
+    "default": {
+        "ENGINE": "django.db.backends.sqlite3",
+        "NAME": ":memory:",
+    }
+}
+'''
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
@@ -29,6 +29,7 @@ DATABASES = {
         'ATOMIC_REQUESTS': True
     }
 }
+'''
 
 ROOT_URLCONF = "tests.urls"
 
