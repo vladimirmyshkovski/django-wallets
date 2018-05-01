@@ -1,3 +1,5 @@
+import logging
+import environ
 import requests
 import blockcypher
 from django.db import models
@@ -12,18 +14,55 @@ from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.fields import GenericRelation
 from model_utils.models import TimeStampedModel, SoftDeletableModel
 from django.core.validators import MinValueValidator
-from django.contrib.postgres.fields import ArrayField
-from gm2m import GM2MField
 from guardian.shortcuts import assign_perm
-from . import api
-from .utils import get_wallet_model, get_expires_date, from_satoshi
-from easy_cache import ecached_property  # , ecached
-from itertools import chain
+from easy_cache import ecached_property
 from django.utils import timezone
+from .managers import ApiKeyManager
+from .utils import get_expires_date, from_satoshi, get_api_key
+from . import api
+
+#domain = settings.DOMAIN_NAME
+#api_key = settings.BLOCKCYPHER_API_KEY
+env = environ.Env()
+logger = logging.getLogger(__name__)
 
 
-domain = settings.DOMAIN_NAME
-api_key = settings.BLOCKCYPHER_API_KEY
+@python_2_unicode_compatible
+class ApiKey(TimeStampedModel, SoftDeletableModel):
+    api_key = models.CharField(max_length=50, null=False, blank=True)
+
+    live = ApiKeyManager()
+
+    '''
+    @property
+    def token_info(self):
+        return blockcypher.get_token_info(self.api_key)
+
+    @property
+    def limit_api_hour(self):
+        return self.token_info['limits']['api/hour']
+
+    @property
+    def limit_hooks_hour(self):
+        self.token_info['limits']['hooks/hour']
+    '''
+
+    def is_expire(self):
+        info = blockcypher.get_token_info(self.api_key)
+        limits = info['limits']
+        current_api_hour = sum([
+            i['api/hour'] for i in info['hits_history']
+        ])
+        current_hooks_hour = sum([
+            i['hooks/hour'] for i in info['hits_history'] if 'hooks/hour' in i
+        ])
+        if current_api_hour < limits['api/hour'] and \
+           current_hooks_hour < limits['hooks/hour']:
+            return False
+        return True
+
+    def __str__(self):
+        return self.api_key
 
 
 @python_2_unicode_compatible
@@ -40,10 +79,16 @@ class BaseWallet(TimeStampedModel, SoftDeletableModel):
     address = models.CharField(max_length=150, unique=True)
     wif = models.CharField(max_length=150, unique=True)
 
-    sended_invoices = GenericRelation(
+    invoices = GenericRelation(
         'wallets.Invoice',
-        content_type_field='sender_wallet_type',
-        object_id_field='sender_wallet_id',
+        content_type_field='wallet_type',
+        object_id_field='wallet_id',
+    )
+
+    payments = GenericRelation(
+        'wallets.Payment',
+        content_type_field='wallet_type',
+        object_id_field='wallet_id',
     )
 
     class Meta:
@@ -76,7 +121,7 @@ class BaseWallet(TimeStampedModel, SoftDeletableModel):
             to_addresses=addresses,
             to_satoshis=amounts,
             coin_symbol=self.coin_symbol,
-            api_key=settings.BLOCKCYPHER_API_KEY
+            api_key=get_api_key()  # settings.BLOCKCYPHER_API_KEY
         )
         return new_transaction
 
@@ -86,18 +131,21 @@ class BaseWallet(TimeStampedModel, SoftDeletableModel):
             to_addresses=addresses,
             to_satoshis=amounts,
             coin_symbol=self.coin_symbol,
-            api_key=settings.BLOCKCYPHER_API_KEY
+            api_key=get_api_key()  # settings.BLOCKCYPHER_API_KEY
         )
         self.set_webhook(
             to_addresses=addresses,
             transaction=new_transaction,
-            event='tx-confirmation',
+            event='confirmed-tx',
             payload=payload
         )
         return new_transaction
 
     def set_webhook(self, to_addresses, transaction,
-                    payload=None, event='tx-confirmation'):
+                    payload=None, event='confirmed-tx'):
+
+        domain = env('DOMAIN_NAME')
+
         if payload:
             payload = signing.dumps(payload)
         signature = signing.dumps({
@@ -115,7 +163,7 @@ class BaseWallet(TimeStampedModel, SoftDeletableModel):
             subscription_address=self.address,
             event=event,
             coin_symbol=self.coin_symbol,
-            api_key=settings.BLOCKCYPHER_API_KEY
+            api_key=get_api_key()  # settings.BLOCKCYPHER_API_KEY
         )
         return webhook
 
@@ -154,54 +202,40 @@ class BaseWallet(TimeStampedModel, SoftDeletableModel):
         return details
 
     def create_invoice(self, wallets, amounts):
+        assert len(wallets) == len(amounts), (
+            'The number of amounts must be equal to the number of wallets')
+
         invoice = Invoice.objects.create(
-            amount=amounts,
-            sender_wallet_object=self
+            wallet=self
         )
-        invoice.receiver_wallet_object = wallets
-        invoice.save()
 
-        assign_perm('pay_invoice', invoice.sender_wallet_object.user, invoice)
-        assign_perm('view_invoice', invoice.sender_wallet_object.user, invoice)
+        assign_perm('pay_invoice', self.user, invoice)
+        assign_perm('view_invoice', self.user, invoice)
 
-        for wallet in invoice.receiver_wallet_object.all():
-            assign_perm('view_invoice', wallet.user, invoice)
+        data = dict(zip(wallets, amounts))
+        for item in data:
+            payment = Payment.objects.create(
+                invoice=invoice,
+                wallet=item,
+                amount=data[item]
+            )
+            assign_perm('view_payment', item.user, payment)
+            assign_perm('view_payment', self.user, payment)
+        '''
+        i = 0
+        for _ in range(len(wallets)):
+            Payment.objects.create(
+                invoice=invoice,
+                amount=amounts[i],
+                receiver_wallet_object=wallets[i]
+                )
+            i += 1
+        '''
+
+        #for wallet in invoice.receiver_wallet_object.all():
+        #    assign_perm('view_invoice', wallet.user, invoice)
 
         return invoice
-
-    @classmethod
-    def get_received_invoices(cls, user, symbol):
-        wallet = get_wallet_model(symbol)
-        if wallet:
-            wallets = wallet.objects.filter(user=user)
-            q = [w.invoice_set.all() for w in wallets]
-            return list(chain(*q))
-
-    @classmethod
-    def get_sended_invoices(cls, user, symbol):
-        wallet = get_wallet_model(symbol)
-        if wallet:
-            wallets = wallet.objects.filter(user=user)
-            q = [w.sended_invoices.all() for w in wallets]
-            return list(chain(*q))
-
-    @classmethod
-    def get_unpaid_received_invoices(cls, user, symbol):
-        invoices = cls.get_received_invoices(user, symbol)
-        if invoices:
-            return len(
-                [i for i in invoices if not i.is_paid and not i.is_expired]
-            )
-        return 0
-
-    @classmethod
-    def get_unpaid_sended_invoices(cls, user, symbol):
-        invoices = cls.get_sended_invoices(user, symbol)
-        if invoices:
-            return len(
-                [i for i in invoices if not i.is_paid and not i.is_expired]
-            )
-        return 0
 
     @classmethod
     def _get_coin_symbol_and_name(cls):
@@ -229,56 +263,6 @@ class BaseWallet(TimeStampedModel, SoftDeletableModel):
     @classmethod
     def get_coin_name(cls):
         return cls._get_coin_symbol_and_name()['coin_name']
-
-    @classmethod
-    def get_total_user_balance(cls, user):
-        total_balance = 0
-        btc = user.btc_wallets.first()
-        ltc = user.ltc_wallets.first()
-        dash = user.dash_wallets.first()
-        doge = user.doge_wallets.first()
-        bcy = user.bcy_wallets.first()
-
-        if btc:
-            total_balance += btc.total_balance
-
-        if ltc:
-            total_balance += ltc.total_balance
-
-        if dash:
-            total_balance += dash.total_balance
-
-        if doge:
-            total_balance += doge.total_balance
-
-        if bcy:
-            total_balance += bcy.total_balance
-        return total_balance
-
-    @classmethod
-    def get_total_user_usd_balance(cls, user):
-        total_balance = 0
-        btc = user.btc_wallets.first()
-        ltc = user.ltc_wallets.first()
-        dash = user.dash_wallets.first()
-        doge = user.doge_wallets.first()
-        bcy = user.bcy_wallets.first()
-
-        if btc:
-            total_balance += btc.total_usd_balance
-
-        if ltc:
-            total_balance += ltc.total_usd_balance
-
-        if dash:
-            total_balance += dash.total_usd_balance
-
-        if doge:
-            total_balance += doge.total_usd_balance
-
-        if bcy:
-            total_balance += bcy.total_usd_balance
-        return total_balance
 
     @classmethod
     def get_rate(cls):
@@ -359,29 +343,21 @@ class Invoice(TimeStampedModel, SoftDeletableModel):
         models.Q(app_label='wallets', model='doge') | \
         models.Q(app_label='wallets', model='bcy')
 
-    amount = ArrayField(
-        models.BigIntegerField(validators=[MinValueValidator(0)]), blank=True
-    )
-
-    sender_wallet_type = models.ForeignKey(
+    wallet_type = models.ForeignKey(
         ContentType,
         on_delete=models.CASCADE,
         limit_choices_to=limit,
-        related_name='sended_invoices'
+        related_name='invoices'
     )
-    sender_wallet_id = models.PositiveIntegerField()
-    sender_wallet_object = GenericForeignKey(
-        'sender_wallet_type',
-        'sender_wallet_id'
+    wallet_id = models.PositiveIntegerField()
+    wallet = GenericForeignKey(
+        'wallet_type',
+        'wallet_id'
     )
 
-    receiver_wallet_object = GM2MField()
-
+    tx_ref = models.CharField(max_length=100, null=True, blank=True)
     is_paid = models.BooleanField(default=False)
-
-    expires = models.DateTimeField(
-        default=get_expires_date
-    )
+    expires = models.DateTimeField(default=get_expires_date)
 
     class Meta:
         permissions = (
@@ -400,7 +376,7 @@ class Invoice(TimeStampedModel, SoftDeletableModel):
             if not self.can_be_paid():
                 self.reset_original_values()
         self.set_original_values()
-        return super(Invoice, self).save(*args, **kwargs)        
+        return super(Invoice, self).save(*args, **kwargs)
 
     def set_original_values(self):
         for field in self.__tracked_fields:
@@ -425,8 +401,27 @@ class Invoice(TimeStampedModel, SoftDeletableModel):
             values[field] = getattr(self, field)
         return values
 
+    @property
+    def amount(self):
+        return sum([payment.amount for payment in self.payments.all()])
+
     def pay(self, payload=None):
-        if self.sender_wallet_object.user.has_perm('pay_invoice', self):
+        if self.wallet.user.has_perm('pay_invoice', self):
+            payments = self.payments.all()
+            data = [
+                {
+                    'address': payment.wallet.address,
+                    'amount':  payment.amount
+                } for payment in payments
+            ]
+            tx_ref = self.wallet.spend_with_webhook(
+                addresses=[payment['address'] for payment in data],
+                amounts=[payment['amount'] for payment in data],
+                payload=payload
+            )
+            self.tx_ref = tx_ref
+            return tx_ref
+            '''
             wallets = self.receiver_wallet_object.all()
             addresses = [wallet.address for wallet in wallets]
             amounts = [amount for amount in self.amount]
@@ -440,6 +435,7 @@ class Invoice(TimeStampedModel, SoftDeletableModel):
                 tx_ref=tx_ref
             )
             return invoice_transaction.tx_ref
+            '''
         return None
 
     def get_absolute_url(self):
@@ -452,23 +448,61 @@ class Invoice(TimeStampedModel, SoftDeletableModel):
     def can_be_paid(self):
         if self.is_expired:
             return False
-        if self.tx_refs.all():
-            tx_refs_total_amount = 0
-            for tx in self.tx_refs.all():
-                details = blockcypher.get_transaction_details(
-                    tx.tx_ref,
-                    self.sender_wallet_object.coin_symbol
-                )
-                tx_refs_total_amount += details['outputs'][0]['value']
-            assert int(sum(self.amount)) < tx_refs_total_amount, 'Invoice can be confirmed, because the amount of all transactions is less than the amount of the invoice.'
-            return True
-        return False
+
+        details = self.wallet.transaction_details(
+            self.tx_ref,
+            self.wallet.coin_symbol
+        )
+
+        if self.amount < details['outputs'][0]['value']:
+            logger.error(
+                'Invoice can be confirmed, because the amount of all ' +
+                'transactions is less than the amount of the invoice.'
+            )
+            return False
+
+        return True
 
     @ecached_property('normal_amount:{self.id}', 60*5)
     def normal_amount(self):
         return from_satoshi(self.amount)
 
 
+@python_2_unicode_compatible
+class Payment(TimeStampedModel, SoftDeletableModel):
+
+    limit = models.Q(app_label='wallets', model='btc') | \
+        models.Q(app_label='wallets', model='ltc') | \
+        models.Q(app_label='wallets', model='dash') | \
+        models.Q(app_label='wallets', model='doge') | \
+        models.Q(app_label='wallets', model='bcy')
+
+    invoice = models.ForeignKey(
+        Invoice,
+        on_delete=models.CASCADE,
+        related_name='payments',
+        null=False,
+        blank=True
+    )
+
+    amount = models.BigIntegerField(validators=[MinValueValidator(0)])
+
+    wallet_type = models.ForeignKey(
+        ContentType,
+        on_delete=models.CASCADE,
+        limit_choices_to=limit,
+    )
+    wallet_id = models.PositiveIntegerField()
+    wallet = GenericForeignKey(
+        'wallet_type',
+        'wallet_id'
+    )
+
+    class Meta:
+        permissions = (
+            ('view_payment', _('Can view payment')),
+        )
+'''
 @python_2_unicode_compatible
 class InvoiceTransaction(models.Model):
 
@@ -483,3 +517,4 @@ class InvoiceTransaction(models.Model):
 
     def __str__(self):
         return self.tx_ref
+'''

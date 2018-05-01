@@ -183,6 +183,7 @@ class TestExtractWebhookId(TestCase):
                 'url': 'https://http://localhost//wallets/webhook/eyJldmVudCI6ImNvbmZpcm1lZC10eCIsInN5bWJvbCI6ImJ0YyIsInRyYW5zYWN0aW9uX2lkIjoiNzk4MWM3ODQ5Mjk0NjQ4YzFlNzlkZDE2MDc3YTM4OGI4MDhmY2Y4YzIwMDM1YWVjN2NjNTMxNWIzN2RhY2ZlZSIsImZyb21fYWRkcmVzcyI6IjFITDdmakNSR0tDNEVmUFJqSFZnbUxtaTdCbXB1OGhHcHMiLCJ0b19hZGRyZXNzIjoiMUhMN2ZqQ1JHS0M0RWZQUmpIVmdtTG1pN0JtcHo4aEdwcyJ9:1f2yCy:2THNsZ9RadqZ35IYq2fH4hMCxdM/'
             }
         ])
+        utils.get_all_api_keys = mock.MagicMock(return_value='FAKE_API_KEY')
         webhook_id = utils.extract_webhook_id(self.signature, 'btc')
         self.assertNotEqual(
             webhook_id,
@@ -225,7 +226,8 @@ class TestUnsubscribeFromWebhook(TestCase):
             return_value=True
         )
         unsubscribe = utils.unsubscribe_from_webhook(
-            '8c125014-7d70-41ca-8ed1-4cc4264894e3',
+            webhook_id='8c125014-7d70-41ca-8ed1-4cc4264894e3',
+            api_key=utils.get_api_key(),
             coin_symbol='btc'
         )
         self.assertTrue(unsubscribe)

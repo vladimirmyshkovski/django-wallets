@@ -1,28 +1,35 @@
-#import environ
+import environ
 import logging
 import requests
 import blockcypher
 from django.core import signing
 from django.core.signing import BadSignature, SignatureExpired
-
-from django.conf import settings
-
 from django.contrib.contenttypes.models import ContentType
-
-from functools import lru_cache
 from datetime import timedelta
 from django.utils import timezone
+from easy_cache import ecached
+from django.urls import reverse
+#from django.conf import settings
+#from functools import lru_cache
+#api_key = settings.BLOCKCYPHER_API_KEY
 
-domain = settings.DOMAIN_NAME
-api_key = settings.BLOCKCYPHER_API_KEY
-#env = environ.Env()
+env = environ.Env()
 logger = logging.getLogger(__name__)
-#domain = env('DOMAIN_NAME')
-#api_key = env('BLOCKCYPHER_API_KEY')
+
+
+def get_api_key():
+    from .models import ApiKey
+    api_key = env('DEFAULT_BLOCKCYPHER_API_KEY')
+    ApiKey.objects.get_or_create(api_key=api_key)
+    return ApiKey.live.first()
+
+
+def get_all_api_keys():
+    from .models import ApiKey
+    return ApiKey.objects.all()
 
 
 def to_satoshi(amount):
-
     if type(amount) is float:
         return int(amount * 100000000)
     elif type(amount) is str:
@@ -51,6 +58,9 @@ def from_satoshi(amount):
 
 def set_webhook(from_address, to_address, transaction_id, coin_symbol,
                 payload=None, event='confirmed-tx'):
+
+    domain = env('DOMAIN_NAME')
+
     if payload:
         payload = signing.dumps(payload)
 
@@ -62,15 +72,24 @@ def set_webhook(from_address, to_address, transaction_id, coin_symbol,
         'transaction_id': transaction_id,
         'payload': payload
         })
+
+    callback_url = 'https://{}{}'.format(
+        domain,
+        reverse(
+            'wallets:webhook', kwargs={'signature': signature}
+            )
+        )
+
     webhook = blockcypher.subscribe_to_address_webhook(
-        callback_url='https://{}/wallets/webhook/{}/'.format(
-            domain,
-            signature
-        ),
+        #callback_url='https://{}/wallets/webhook/{}/'.format(
+        #    domain,
+        #    signature
+        #),
+        callback_url=callback_url,
         subscription_address=from_address,
         event=event,
         coin_symbol=coin_symbol,
-        api_key=api_key
+        api_key=get_api_key()
     )
     return webhook
 
@@ -101,16 +120,21 @@ def validate_signin(data):
 
 
 def extract_webhook_id(signature, coin_symbol):
-    webhook_id = None
-    webhooks = blockcypher.list_webhooks(api_key, coin_symbol=coin_symbol)
-    for webhook in webhooks:
-        if webhook['url'].endswith(signature + '/'):
-            webhook_id = webhook['id']
-            return webhook_id
-    return webhook_id
+    api_keys = get_all_api_keys()
+    for api_key in api_keys:
+        webhook_id = None
+        webhooks = blockcypher.list_webhooks(api_key, coin_symbol=coin_symbol)
+        for webhook in webhooks:
+            if webhook['url'].endswith(signature + '/'):
+                webhook_id = webhook['id']
+                return webhook_id
+        return {
+            'api_key': api_key,
+            'webhook_id': webhook_id
+        }
 
 
-def unsubscribe_from_webhook(webhook_id, coin_symbol):
+def unsubscribe_from_webhook(api_key, webhook_id, coin_symbol):
     unsubscribe = blockcypher.unsubscribe_from_webhook(
         api_key,
         webhook_id,
@@ -240,7 +264,7 @@ class Converter(object):
         assert self.currency_from in self.currencies, '''
         The converter is not provided for {}'''.format(self.currency_from)
 
-    @lru_cache(maxsize=2)
+    @ecached('convert', 60)
     def convert(self):
         currency_from = self.currencies[self.currency_from]
         currency_to = self.currencies[self.currency_to]

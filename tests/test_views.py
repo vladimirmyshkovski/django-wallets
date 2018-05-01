@@ -9,7 +9,6 @@ import blockcypher
 #rom django.urls.exceptions import NoReverseMatch
 from django.core import signing
 from guardian.shortcuts import assign_perm
-from django.test import Client
 
 
 class TestAllUserWalletsList(TestCase):
@@ -463,15 +462,6 @@ class TestWalletsWebhookView(TestCase):
         }
         self.signature = signing.dumps(self.data)
 
-    def test_post_with_invalid_signature(self):
-        #resp = self.post('/wallets/webhook/{}/'.format(self.fake_signature))
-        #self.response_200(resp)
-        self.assertRaises(
-            AssertionError,
-            self.post,
-            '/wallets/webhook/{}/'.format(self.fake_signature)
-        )
-
     def test_post_with_valid_signature(self):
         resp = self.post('/wallets/webhook/{}/'.format(self.signature))
         self.response_200(resp)
@@ -501,7 +491,9 @@ class TestWalletsWebhookView(TestCase):
                 self.signature
             )
         }])
-        webhook_id = mock.MagicMock(return_value='35e06a63-b09b-4cb2-a536-208642c96cd4')
+        webhook_id = mock.MagicMock(
+            return_value='35e06a63-b09b-4cb2-a536-208642c96cd4'
+        )
         blockcypher.unsubscribe_from_webhook = mock.MagicMock(
             return_value=True
         )
@@ -519,69 +511,85 @@ class TestInvoiceListView(TestCase):
         self.doge = factories.DogeFactory(user=self.user)
 
         self.btc_invoice = factories.BtcInvoiceFactory(
-            sender_wallet_object=self.btc,
-            amount=[1]
-            )
-        self.btc_invoice.receiver_wallet_object.add(self.btc)
-        self.btc_invoice.save()
+            wallet=self.btc
+        )
+        self.btc_payment = factories.PaymentBtcInvoiceFactory(
+            invoice=self.btc_invoice,
+            amount=1
+        )
 
         self.ltc_invoice = factories.LtcInvoiceFactory(
-            sender_wallet_object=self.ltc,
-            amount=[1]
-            )
-        self.ltc_invoice.receiver_wallet_object.add(self.ltc)
-        self.ltc_invoice.save()
+            wallet=self.ltc
+        )
+        self.ltc_payment = factories.PaymentBtcInvoiceFactory(
+            invoice=self.ltc_invoice,
+            amount=1
+        )
 
         self.dash_invoice = factories.DashInvoiceFactory(
-            sender_wallet_object=self.dash,
-            amount=[1]
-            )
-        self.dash_invoice.receiver_wallet_object.add(self.dash)
-        self.dash_invoice.save()
+            wallet=self.dash
+        )
+        self.dash_payment = factories.PaymentBtcInvoiceFactory(
+            invoice=self.dash_invoice,
+            amount=1
+        )
 
         self.doge_invoice = factories.DogeInvoiceFactory(
-            sender_wallet_object=self.doge,
-            amount=[1]
-            )
-        self.doge_invoice.receiver_wallet_object.add(self.doge)
-        self.doge_invoice.save()
+            wallet=self.doge
+        )
+        self.doge_payment = factories.PaymentBtcInvoiceFactory(
+            invoice=self.doge_invoice,
+            amount=1
+        )
 
     def test_redirect_if_not_logged_in(self):
-        resp = self.get('/wallets/invoices/')
+        resp = self.get('/wallets/invoices/btc/')
         self.assertRedirects(
             resp,
-            '/accounts/login/?next=/wallets/invoices/',
+            '/accounts/login/?next=/wallets/invoices/btc/',
             fetch_redirect_response=False
         )
 
     def test_success_if_logged_in(self):
         self.client.login(username=self.user.username, password='password')
-        resp = self.get('/wallets/invoices/')
+        resp = self.get('/wallets/invoices/btc/')
         self.response_200(resp)
 
     def test_context_object(self):
         self.client.login(username=self.user.username, password='password')
-        self.get('/wallets/invoices/')
+        self.get('/wallets/invoices/btc/')
+        self.assertTrue(
+            self.btc_invoice in self.get_context('invoices'),
+        )
+        self.assertIsNotNone(self.get_context('payments'))
 
+        self.client.login(username=self.user.username, password='password')
+        self.get('/wallets/invoices/ltc/')
         self.assertTrue(
-            self.btc_invoice in self.get_context('btc_received_invoices'),
+            self.ltc_invoice in self.get_context('invoices'),
         )
+        self.assertIsNotNone(self.get_context('payments'))
+
+        self.client.login(username=self.user.username, password='password')
+        self.get('/wallets/invoices/dash/')
         self.assertTrue(
-            self.ltc_invoice in self.get_context('ltc_received_invoices'),
+            self.dash_invoice in self.get_context('invoices'),
         )
+        self.assertIsNotNone(self.get_context('payments'))
+
+        self.client.login(username=self.user.username, password='password')
+        self.get('/wallets/invoices/doge/')
         self.assertTrue(
-            self.dash_invoice in self.get_context('dash_received_invoices'),
+            self.doge_invoice in self.get_context('invoices'),
         )
-        self.assertTrue(
-            self.doge_invoice in self.get_context('doge_received_invoices'),
-        )
+        self.assertIsNotNone(self.get_context('payments'))
 
     def test_view_uses_correct_template(self):
         self.client.login(
             username='{}'.format(self.user.username),
             password='password'
         )
-        resp = self.get('/wallets/invoices/')
+        resp = self.get('/wallets/invoices/btc/')
         self.response_200(resp)
         self.assertTemplateUsed(resp, 'wallets/invoice_list.html')
 
@@ -607,53 +615,63 @@ class TestInvoiceDetailView(TestCase):
         self.doge = factories.DogeFactory(user=self.user)
 
         self.btc_invoice = factories.BtcInvoiceFactory(
-            sender_wallet_object=self.btc,
-            amount=[1]
+            wallet=self.btc,
         )
-
-        self.btc_invoice.receiver_wallet_object.add(self.btc)
-        self.btc_invoice.save()
+        self.btc_payment = factories.PaymentBtcInvoiceFactory(
+            invoice=self.btc_invoice,
+            amount=1
+        )
         assign_perm('view_invoice', self.user, self.btc_invoice)
         assign_perm('pay_invoice', self.user, self.btc_invoice)
+        assign_perm('view_payment', self.user, self.btc_payment)
 
         self.ltc_invoice = factories.LtcInvoiceFactory(
-            sender_wallet_object=self.ltc,
-            amount=[1]
+            wallet=self.ltc,
         )
-        self.ltc_invoice.receiver_wallet_object.add(self.ltc)
-        self.ltc_invoice.save()
+        self.ltc_payment = factories.PaymentLtcInvoiceFactory(
+            invoice=self.ltc_invoice,
+            amount=1
+        )
         assign_perm('view_invoice', self.user, self.ltc_invoice)
         assign_perm('pay_invoice', self.user, self.ltc_invoice)
+        assign_perm('view_payment', self.user, self.ltc_payment)
 
         self.dash_invoice = factories.DashInvoiceFactory(
-            sender_wallet_object=self.dash,
-            amount=[1]
+            wallet=self.dash,
         )
-        self.dash_invoice.receiver_wallet_object.add(self.dash)
-        self.dash_invoice.save()
+        self.dash_payment = factories.PaymentDashInvoiceFactory(
+            invoice=self.dash_invoice,
+            amount=1
+        )
         assign_perm('view_invoice', self.user, self.dash_invoice)
         assign_perm('pay_invoice', self.user, self.dash_invoice)
+        assign_perm('view_payment', self.user, self.dash_payment)
 
         self.doge_invoice = factories.DogeInvoiceFactory(
-            sender_wallet_object=self.doge,
-            amount=[1]
+            wallet=self.dash,
         )
-        self.doge_invoice.receiver_wallet_object.add(self.doge)
-        self.doge_invoice.save()
+        self.doge_payment = factories.PaymentDogeInvoiceFactory(
+            invoice=self.doge_invoice,
+            amount=1
+        )
         assign_perm('view_invoice', self.user, self.doge_invoice)
         assign_perm('pay_invoice', self.user, self.doge_invoice)
+        assign_perm('view_payment', self.user, self.doge_payment)
 
     def test_redirect_if_not_logged_in(self):
-        resp = self.get('/wallets/invoices/1/')
+        resp = self.get('/wallets/invoices/1/_detail/')
         self.assertRedirects(
             resp,
-            '/accounts/login/?next=/wallets/invoices/1/',
+            '/accounts/login/?next=/wallets/invoices/1/_detail/',
             fetch_redirect_response=False
         )
 
     def test_success_if_logged_in(self):
         self.client.login(username=self.user.username, password='password')
-        resp = self.get('/wallets/invoices/{}/'.format(self.btc_invoice.pk))
+        resp = self.get('/wallets/invoices/{}/_detail/'.format(
+            self.btc_invoice.pk
+            )
+        )
         self.response_200(resp)
 
     def test_view_url_accessible_by_name(self):
@@ -668,7 +686,7 @@ class TestInvoiceDetailView(TestCase):
 
     def test_context_object(self):
         self.client.login(username=self.user.username, password='password')
-        self.get('/wallets/invoices/{}/'.format(self.btc_invoice.pk))
+        self.get('/wallets/invoices/{}/_detail/'.format(self.btc_invoice.pk))
         self.assertEqual(
             self.get_context('object'),
             self.btc_invoice
@@ -676,15 +694,9 @@ class TestInvoiceDetailView(TestCase):
 
     def test_object_belongs_user(self):
         self.client.login(username=self.user.username, password='password')
-        self.get('/wallets/invoices/{}/'.format(self.btc_invoice.pk))
-        context = self.get_context('object').receiver_wallet_object.all()
-        receiver = self.btc_invoice.receiver_wallet_object.all()
-        self.assertTrue(
-            self.user in [wallet.user for wallet in context])
-        self.assertTrue(self.user in [wallet.user for wallet in receiver])
-
+        self.get('/wallets/invoices/{}/_detail/'.format(self.btc_invoice.pk))
         self.assertEqual(
-            self.get_context('object').sender_wallet_object.user,
+            self.get_context('object').wallet.user,
             self.user
         )
 
@@ -693,7 +705,10 @@ class TestInvoiceDetailView(TestCase):
             username='{}'.format(self.user.username),
             password='password'
         )
-        resp = self.get('/wallets/invoices/{}/'.format(self.btc_invoice.pk))
+        resp = self.get('/wallets/invoices/{}/_detail/'.format(
+            self.btc_invoice.pk
+            )
+        )
         self.response_200(resp)
         self.assertTemplateUsed(resp, 'wallets/invoice_detail.html')
 
@@ -703,7 +718,10 @@ class TestInvoiceDetailView(TestCase):
             username='{}'.format(user.username),
             password='password'
         )
-        resp = self.get('/wallets/invoices/{}/'.format(self.btc_invoice.pk))
+        resp = self.get('/wallets/invoices/{}/_detail/'.format(
+            self.btc_invoice.pk
+            )
+        )
         self.response_403(resp)
 
     def test_success_with_POST(self):
@@ -712,7 +730,7 @@ class TestInvoiceDetailView(TestCase):
             password='password'
         )
         resp = self.post(
-            '/wallets/invoices/{}/'.format(self.btc_invoice.pk),
+            '/wallets/invoices/{}/_detail/'.format(self.btc_invoice.pk),
             data={'payload': ''}
         )
         self.response_302(resp)
@@ -725,7 +743,7 @@ class TestInvoiceDetailView(TestCase):
             password='password'
         )
         resp = self.post(
-            '/wallets/invoices/{}/'.format(self.btc_invoice.pk),
+            '/wallets/invoices/{}/_detail/'.format(self.btc_invoice.pk),
             data={'payload': ''}
         )
         self.response_302(resp)
@@ -733,7 +751,7 @@ class TestInvoiceDetailView(TestCase):
         self.response_200(resp)
         pk = self.btc_invoice.pk
         invoice = models.Invoice.objects.get(pk=pk)
-        self.assertTrue(invoice.tx_refs.exists())
+        self.assertIsNotNone(invoice.tx_ref)
 
 """
 class TestInvoicePayView(TestCase):
@@ -742,7 +760,7 @@ class TestInvoicePayView(TestCase):
         self.btc = factories.BtcFactory(user=self.user)
 
         self.btc_invoice = factories.BtcInvoiceFactory(
-            sender_wallet_object=self.btc,
+            wallet=self.btc,
             amount=[1]
         )
         assign_perm('pay_invoice', self.user, self.btc_invoice)
@@ -838,7 +856,7 @@ class TestInvoicePayView(TestCase):
         self.assertTrue(self.user in [wallet.user for wallet in receiver])
 
         self.assertEqual(
-            self.get_context('object').sender_wallet_object.user,
+            self.get_context('object').wallet.user,
             self.user
         )
 

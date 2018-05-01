@@ -63,11 +63,12 @@ setup(
         'djangorestframework',
         'django-model-utils',
         #'requests==2.4.3',
-        'django-gm2m',
+        #'django-gm2m',
         'psycopg2-binary',
         'django-guardian',
         'easy_cache',
-        'django-querysetsequence'
+        'django-environ'
+        #'django-querysetsequence'
     ],
     license="MIT",
     zip_safe=False,

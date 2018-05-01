@@ -4,21 +4,21 @@ from django.utils.translation import ugettext_lazy as _
 from django.http import JsonResponse, Http404
 from django.urls import reverse  # , reverse_lazy
 #from django.shortcuts import redirect
+from guardian.mixins import PermissionRequiredMixin, LoginRequiredMixin
 from django.views.generic import (DetailView, ListView, RedirectView,
                                   View, TemplateView, DeleteView)
 from django.views.generic.edit import FormMixin
 from django.views.decorators.csrf import csrf_exempt
 #from django.shortcuts import get_object_or_404
-from .utils import (get_wallet_model, decode_signin,
-                    extract_webhook_id, unsubscribe_from_webhook,
+from .utils import (decode_signin, extract_webhook_id,
+                    unsubscribe_from_webhook,
                     validate_signin, to_satoshi)
 from .signals import get_webhook
 from .mixins import OwnerPermissionsMixin, CheckWalletMixin
 from .models import Invoice
 from .forms import WithdrawForm, PayForm
 from .services import generate_new_address
-from guardian.mixins import PermissionRequiredMixin, LoginRequiredMixin
-
+from .queries import get_payments, get_invoices
 
 try:
     _messages = 'django.contrib.messages' in settings.INSTALLED_APPS
@@ -171,10 +171,10 @@ class WalletsWebhookView(View):
                 transaction_id=sign['transaction_id'],
                 payload=sign['payload']
             )
-            webhook_id = extract_webhook_id(signature, sign['symbol'])
-            if webhook_id:
+            data = extract_webhook_id(signature, sign['symbol'])
+            if data:
                 unsubscribe_from_webhook(
-                    webhook_id, sign['symbol']
+                    data['api_key'], data['webhook_id'], sign['symbol']
                 )
         except:
             pass
@@ -187,12 +187,22 @@ class WalletsWebhookView(View):
         )
 
 
-class InvoiceListView(LoginRequiredMixin, TemplateView):
+class InvoiceListView(LoginRequiredMixin, CheckWalletMixin, TemplateView):
 
     template_name = 'wallets/invoice_list.html'
 
     def get_context_data(self, **kwargs):
         context = super(InvoiceListView, self).get_context_data(**kwargs)
+        if self.model:
+            context['invoices'] = get_invoices(
+                user=self.request.user,
+                symbol=self.symbol
+            )
+            context['payments'] = get_payments(
+                user=self.request.user,
+                symbol=self.symbol
+            )
+        '''
         symbols = ['btc', 'ltc', 'dash', 'doge', 'bcy']
         context['symbols'] = symbols
         for symbol in symbols:
@@ -208,28 +218,36 @@ class InvoiceListView(LoginRequiredMixin, TemplateView):
             )
             context['{}_sended_invoices'.format(symbol)] = sended_invoices
             context['form'] = PayForm
-            '''
-            wallets = wallet.objects.filter(user=self.request.user).all()
-            invoices_list = get_wallet_invoices(
-                invoices=Invoice.objects.all(),
-                wallets=wallets,
-                symbol=symbol
-            )
-            received_invoices = '{}_received_invoices'.format(symbol)
-            sended_invoices = '{}_sended_invoices'.format(symbol)
-            context[received_invoices] = invoices_list[received_invoices]
-            context[sended_invoices] = invoices_list[sended_invoices]
-            context['len_{}'.format(received_invoices)] = 0
-            context['len_{}'.format(sended_invoices)] = 0
+        '''
+        '''
+        wallets = wallet.objects.filter(user=self.request.user).all()
+        invoices_list = get_wallet_invoices(
+            invoices=Invoice.objects.all(),
+            wallets=wallets,
+            symbol=symbol
+        )
+        received_invoices = '{}_received_invoices'.format(symbol)
+        sended_invoices = '{}_sended_invoices'.format(symbol)
+        context[received_invoices] = invoices_list[received_invoices]
+        context[sended_invoices] = invoices_list[sended_invoices]
+        context['len_{}'.format(received_invoices)] = 0
+        context['len_{}'.format(sended_invoices)] = 0
 
-            for invoice in invoices_list[received_invoices]:
-                if not invoice.is_paid:
-                    context['len_{}'.format(received_invoices)] += 1
-            for invoice in invoices_list[sended_invoices]:
-                if not invoice.is_paid:
-                    context['len_{}'.format(sended_invoices)] += 1
-            '''
+        for invoice in invoices_list[received_invoices]:
+            if not invoice.is_paid:
+                context['len_{}'.format(received_invoices)] += 1
+        for invoice in invoices_list[sended_invoices]:
+            if not invoice.is_paid:
+                context['len_{}'.format(sended_invoices)] += 1
+        '''
         return context
+
+    def dispatch(self, request, *args, **kwargs):
+        self.symbol = self.kwargs['wallet']
+        self.model = self.check_wallet(self.symbol)
+        return super(InvoiceListView, self).dispatch(
+            request, *args, **kwargs
+        )
 
 
 class InvoiceDetailView(LoginRequiredMixin, PermissionRequiredMixin,
@@ -256,27 +274,22 @@ class InvoiceDetailView(LoginRequiredMixin, PermissionRequiredMixin,
         self.payload = form.cleaned_data['payload']
 
         if self.request.user.has_perm('pay_invoice', self.object):
-            amounts_sum = sum(self.object.amount)
-            balance = to_satoshi(
-                float(self.object.sender_wallet_object.balance)
-            )
+            balance = to_satoshi(float(self.object.wallet.balance))
 
             if self.object.is_expired:
                 if _messages:
                     messages.error(self.request, _('Invoice expired'))
 
-            if balance >= amounts_sum:
+            if balance >= self.object.amount:
                 payload = self.payload
                 try:
                     self.object.pay(payload)
                     if _messages:
-                        last_tx_ref = self.object.tx_refs.last()
-                        transaction = last_tx_ref.tx_ref
                         messages.success(
                             self.request,
                             _('''The account was successfully sent.
                                  Wait for transaction {}
-                                confirmation.'''.format(transaction))
+                                confirmation.'''.format(self.object.tx_ref))
                         )
                 except:
                     if _messages:

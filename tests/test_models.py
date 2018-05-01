@@ -69,117 +69,137 @@ class TestBtc(TestCase):
             models.Btc.get_coin_symbol(),
             self.btc.coin_symbol
         )
+        self.assertEqual(
+            self.btc.coin_symbol,
+            'btc'
+        )
 
     def test_get_coin_name(self):
         self.assertEqual(
             models.Btc.get_coin_name(),
             self.btc.coin_name
         )
-
-    def test_get_received_invoices_without_data(self):
-        received_invoices = self.btc.__class__.get_received_invoices(
+        self.assertEqual(
+            self.btc.coin_name,
+            'bitcoin'
+        )        
+    '''
+    def test_get_invoices_without_data(self):
+        invoices = self.btc.__class__.get_invoices(
             user=self.btc.user,
             symbol='btc'
         )
         self.assertQuerysetEqual(
-            received_invoices,
+            invoices,
             []
         )
 
-    def test_get_received_invoices_with_data(self):
+    def test_get_invoices_with_data(self):
         invoice = factories.BtcInvoiceFactory(
-            sender_wallet_object=self.btc,
-            amount=[1]
+            wallet=self.btc,
         )
-        invoice.receiver_wallet_object = [self.btc]
-        invoice.save()
-        received_invoices = self.btc.__class__.get_received_invoices(
+        invoices = self.btc.get_invoices(
             user=self.btc.user,
             symbol='btc'
         )
-        self.assertTrue(invoice in received_invoices)
+        self.assertTrue(
+            invoice in invoices
+        )
         self.assertEqual(
-            len(received_invoices),
+            len(invoices),
             1
         )
+        self.assertTrue(
+            isinstance(invoices[0], models.Invoice)
+        )
 
-    def test_get_sended_invoices_without_data(self):
-        sended_invoices = self.btc.__class__.get_sended_invoices(
+    def test_get_payments_without_data(self):
+        payments = self.btc.__class__.get_payments(
             user=self.btc.user,
             symbol='btc'
         )
         self.assertQuerysetEqual(
-            sended_invoices,
+            payments,
             []
         )
 
-    def test_get_sended_invoices_with_data(self):
+    def test_get_payments_with_data(self):
         invoice = factories.BtcInvoiceFactory(
-            sender_wallet_object=self.btc,
-            amount=[1]
+            wallet=self.btc,
         )
-        invoice.receiver_wallet_object = [self.btc]
-        sended_invoices = self.btc.__class__.get_sended_invoices(
+        payment = factories.PaymentBtcInvoiceFactory(
+            invoice=invoice,
+            wallet=self.btc
+        )
+        payments = self.btc.__class__.get_payments(
             user=self.btc.user,
             symbol='btc'
         )
-        self.assertTrue(invoice in sended_invoices)
         self.assertEqual(
-            len(sended_invoices),
+            invoice,
+            payment.invoice
+        )
+        self.assertEqual(
+            len(payments),
             1
         )
+        self.assertTrue(
+            payment in payments
+        )
+        self.assertTrue(
+            isinstance(payments[0], models.Payment)
+        )
 
-    def test_get_unpaid_received_invoices_without_data(self):
-        received_invoices = self.btc.__class__.get_unpaid_received_invoices(
+    def test_get_count_unpaid_payments_without_data(self):
+        payments = self.btc.__class__.get_count_unpaid_payments(
             user=self.btc.user,
             symbol='btc'
         )
         self.assertEqual(
-            received_invoices,
+            payments,
             0
         )
 
-    def test_get_unpaid_received_invoices_with_data(self):
+    def test_get_count_unpaid_payments_with_data(self):
         invoice = factories.BtcInvoiceFactory(
-            sender_wallet_object=self.btc,
-            amount=[1]
+            wallet=self.btc,
         )
-        invoice.receiver_wallet_object = [self.btc]
-        received_invoices = self.btc.__class__.get_unpaid_received_invoices(
+        factories.PaymentBtcInvoiceFactory(
+            invoice=invoice,
+            wallet=self.btc
+        )
+        payments = self.btc.__class__.get_count_unpaid_payments(
             user=self.btc.user,
             symbol='btc'
         )
         self.assertEqual(
-            received_invoices,
+            payments,
             1
         )
 
-    def test_get_unpaid_sended_invoices_without_data(self):
-        sended_invoices = self.btc.__class__.get_unpaid_sended_invoices(
+    def test_get_count_unpaid_invoices_without_data(self):
+        invoices = self.btc.__class__.get_count_unpaid_invoices(
             user=self.btc.user,
             symbol='btc'
         )
         self.assertEqual(
-            sended_invoices,
+            invoices,
             0
         )
 
-    def test_get_unpaid_sended_invoices_with_data(self):
-        invoice = factories.BtcInvoiceFactory(
-            sender_wallet_object=self.btc,
-            amount=[1]
+    def test_get_count_unpaid_invoices_with_data(self):
+        factories.BtcInvoiceFactory(
+            wallet=self.btc,
         )
-        invoice.receiver_wallet_object = [self.btc]
-        invoice.save()
-        sended_invoices = self.btc.__class__.get_unpaid_sended_invoices(
+        invoices = self.btc.__class__.get_count_unpaid_invoices(
             user=self.btc.user,
             symbol='btc'
         )
         self.assertEqual(
-            sended_invoices,
+            invoices,
             1
         )
-
+    '''
     def test_get_rate(self):
         response = Response()
         response = mock.MagicMock(return_value=response)
@@ -465,16 +485,34 @@ class TestBtc(TestCase):
             type(1)
         )
 
-    def test_create_invoice(self):
-        btc = factories.BtcFactory()
+    def test_create_invoice_with_valid_data(self):
         invoice = self.btc.create_invoice(
             amounts=[100],
-            wallets=[btc],
+            wallets=[self.btc],
         )
+        btc = models.Btc.objects.get(pk=self.btc.pk)
         self.assertTrue(isinstance(invoice, models.Invoice))
-        self.assertEqual(invoice.amount, [100])
-        self.assertTrue(btc in invoice.receiver_wallet_object.all())
-        self.assertEqual(btc.invoice_set.first(), invoice)
+        self.assertEqual(invoice.amount, 100)
+        self.assertEqual(btc.invoices.first(), invoice)
+        self.assertEqual(
+            btc.payments.first(),
+            invoice.payments.first()
+        )
+
+    def test_create_invoice_with_invalid_data(self):
+        btc = factories.BtcFactory()
+        #invoice = self.btc.create_invoice(
+        #    amounts=[100, 25],
+        #    wallets=[btc],
+        #)
+        self.assertRaises(
+            AssertionError,
+            lambda: self.btc.create_invoice(amounts=[100, 25], wallets=[btc])
+        )
+        #self.assertTrue(isinstance(invoice, models.Invoice))
+        #self.assertEqual(invoice.amount, 100)
+        #self.assertTrue(btc in invoice.receiver_wallet_object.all())
+        #self.assertEqual(btc.invoice_set.first(), invoice)
 
     def tearDown(self):
         pass
@@ -792,81 +830,212 @@ class TestInvoice(TestCase):
         self.doge_invoice = factories.DogeInvoiceFactory()
         assign_perm(
             'view_invoice',
-            self.btc_invoice.sender_wallet_object.user,
+            self.btc_invoice.wallet.user,
             self.btc_invoice
         )
         assign_perm(
             'pay_invoice',
-            self.btc_invoice.sender_wallet_object.user,
+            self.btc_invoice.wallet.user,
             self.btc_invoice
         )
 
         assign_perm(
             'view_invoice',
-            self.ltc_invoice.sender_wallet_object.user,
+            self.ltc_invoice.wallet.user,
             self.ltc_invoice
         )
         assign_perm(
             'pay_invoice',
-            self.ltc_invoice.sender_wallet_object.user,
+            self.ltc_invoice.wallet.user,
             self.ltc_invoice
         )
 
         assign_perm(
             'view_invoice',
-            self.dash_invoice.sender_wallet_object.user,
+            self.dash_invoice.wallet.user,
             self.dash_invoice
         )
         assign_perm(
             'pay_invoice',
-            self.dash_invoice.sender_wallet_object.user,
+            self.dash_invoice.wallet.user,
             self.dash_invoice
         )
 
         assign_perm(
             'view_invoice',
-            self.doge_invoice.sender_wallet_object.user,
+            self.doge_invoice.wallet.user,
             self.doge_invoice
         )
         assign_perm(
             'pay_invoice',
-            self.doge_invoice.sender_wallet_object.user,
+            self.doge_invoice.wallet.user,
             self.doge_invoice
         )
 
     def test_get_absolute_url(self):
         self.assertEqual(
             self.btc_invoice.get_absolute_url(),
-            '/wallets/invoices/{}/'.format(self.btc_invoice.pk)
+            '/wallets/invoices/{}/_detail/'.format(self.btc_invoice.pk)
         )
         self.assertEqual(
             self.ltc_invoice.get_absolute_url(),
-            '/wallets/invoices/{}/'.format(self.ltc_invoice.pk)
+            '/wallets/invoices/{}/_detail/'.format(self.ltc_invoice.pk)
         )
         self.assertEqual(
             self.dash_invoice.get_absolute_url(),
-            '/wallets/invoices/{}/'.format(self.dash_invoice.pk)
+            '/wallets/invoices/{}/_detail/'.format(self.dash_invoice.pk)
         )
         self.assertEqual(
             self.doge_invoice.get_absolute_url(),
-            '/wallets/invoices/{}/'.format(self.doge_invoice.pk)
+            '/wallets/invoices/{}/_detail/'.format(self.doge_invoice.pk)
         )
 
     def test_has_no_changed(self):
-        self.btc_invoice.amount = [1]
+        blockcypher.get_transaction_details = mock.MagicMock(
+            return_value={
+                "addresses": [
+                    "13XXaBufpMvqRqLkyDty1AXqueZHVe6iyy",
+                    "19YtzZdcfs1V2ZCgyRWo8i2wLT8ND1Tu4L",
+                    "1BNiazBzCxJacAKo2yL83Wq1VJ18AYzNHy",
+                    "1GbMfYui17L5m6sAy3L3WXAtf1P32bxJXq",
+                    "1N2f642sbgCMbNtXFajz9XDACDFnFzdXzV"
+                ],
+                "block_hash": "0000000000000000c504bdea36e531d8089d324f2d" +
+                              "936c86e3274f97f8a44328",
+                "block_height": 293000,
+                "confirmations": 86918,
+                "confirmed": "datetime.datetime(2014, 3, 29, 1, 29, 19," +
+                             " 0, tzinfo=tzutc())",
+                "double_spend": False,
+                "fees": 0,
+                "hash": "f854aebae95150b379cc1187d848d58225f3c4157fe992bcd1" +
+                        "66f58bd5063449",
+                "inputs": [
+                    {
+                        "addresses": [
+                            "1GbMfYui17L5m6sAy3L3WXAtf1P32bxJXq"
+                        ],
+                        "output_index": 1,
+                        "output_value": 16450000,
+                        "prev_hash": "583910b7bf90ab802e22e5c25a89b59862b20c" +
+                                     "8c1aeb24dfb94e7a508a70f121",
+                        "script": "4830450220504b1ccfddf508422bdd8b0fcda2b14" +
+                                  "83e87aee1b486c0130bc29226bbce3b4e022100b5" +
+                                  "befcfcf0d3bf6ebf0ac2f93badb19e3042c7bed45" +
+                                  "6c398e743b885e782466c012103b1feb40b99e8ff" +
+                                  "18469484a50e8b52cc478d5f4f773a341fbd920a4" +
+                                  "ceaedd4bf",
+                        "script_type": "pay-to-pubkey-hash",
+                        "sequence": 4294967295
+                    },
+                ],
+                "lock_time": 0,
+                "outputs": [
+                    {
+                        "addresses": [
+                            "1N2f642sbgCMbNtXFajz9XDACDFnFzdXzV"
+                        ],
+                        "script": "76a914e6aad9d712c419ea8febf009a3f3bfdd8d2" +
+                                  "22fac88ac",
+                        "script_type": "pay-to-pubkey-hash",
+                        "spent_by": "35832d6c70b98b54e9a53ab2d51176eb19ad11b" +
+                                    "c4505d6bb1ea6c51a68cb92ee",
+                        "value": 70320221545
+                    }
+                ],
+                "preference": "low",
+                "received": "datetime.datetime(2014, 3, 29, 1, 29, " +
+                            "19, 0, tzinfo=tzutc())",
+                "relayed_by": "",
+                "size": 636,
+                "total": 70320221545,
+                "ver": 1,
+                "vin_sz": 4,
+                "vout_sz": 1
+            }
+        )
         self.btc_invoice.is_paid = True
+        factories.PaymentBtcInvoiceFactory(invoice=self.btc_invoice, amount=1)
         self.btc_invoice.save()
         self.assertFalse(self.btc_invoice.is_paid)
-        self.assertEqual(self.btc_invoice.amount, [1])
+        self.assertEqual(self.btc_invoice.amount, 1)
 
     def test_has_changed(self):
-        self.btc_invoice.amount = [1]
-        self.btc_invoice.save()
-        self.invoice_transaction = factories.InvoiceTransactionFactory(
-            invoice=self.btc_invoice,
-            tx_ref='4cff011ec53022f2ae47197d1a2fd4a6ac2a80139f4d0131c1f' +
-                   'ed625ed5dc869'
+        blockcypher.get_transaction_details = mock.MagicMock(
+            return_value={
+                "addresses": [
+                    "13XXaBufpMvqRqLkyDty1AXqueZHVe6iyy",
+                    "19YtzZdcfs1V2ZCgyRWo8i2wLT8ND1Tu4L",
+                    "1BNiazBzCxJacAKo2yL83Wq1VJ18AYzNHy",
+                    "1GbMfYui17L5m6sAy3L3WXAtf1P32bxJXq",
+                    "1N2f642sbgCMbNtXFajz9XDACDFnFzdXzV"
+                ],
+                "block_hash": "0000000000000000c504bdea36e531d8089d324f2d" +
+                              "936c86e3274f97f8a44328",
+                "block_height": 293000,
+                "confirmations": 86918,
+                "confirmed": "datetime.datetime(2014, 3, 29, 1, 29, 19," +
+                             " 0, tzinfo=tzutc())",
+                "double_spend": False,
+                "fees": 0,
+                "hash": "f854aebae95150b379cc1187d848d58225f3c4157fe992bcd1" +
+                        "66f58bd5063449",
+                "inputs": [
+                    {
+                        "addresses": [
+                            "1GbMfYui17L5m6sAy3L3WXAtf1P32bxJXq"
+                        ],
+                        "output_index": 1,
+                        "output_value": 16450000,
+                        "prev_hash": "583910b7bf90ab802e22e5c25a89b59862b20c" +
+                                     "8c1aeb24dfb94e7a508a70f121",
+                        "script": "4830450220504b1ccfddf508422bdd8b0fcda2b14" +
+                                  "83e87aee1b486c0130bc29226bbce3b4e022100b5" +
+                                  "befcfcf0d3bf6ebf0ac2f93badb19e3042c7bed45" +
+                                  "6c398e743b885e782466c012103b1feb40b99e8ff" +
+                                  "18469484a50e8b52cc478d5f4f773a341fbd920a4" +
+                                  "ceaedd4bf",
+                        "script_type": "pay-to-pubkey-hash",
+                        "sequence": 4294967295
+                    },
+                ],
+                "lock_time": 0,
+                "outputs": [
+                    {
+                        "addresses": [
+                            "1N2f642sbgCMbNtXFajz9XDACDFnFzdXzV"
+                        ],
+                        "script": "76a914e6aad9d712c419ea8febf009a3f3bfdd8d2" +
+                                  "22fac88ac",
+                        "script_type": "pay-to-pubkey-hash",
+                        "spent_by": "35832d6c70b98b54e9a53ab2d51176eb19ad11b" +
+                                    "c4505d6bb1ea6c51a68cb92ee",
+                        "value": 70320221545
+                    }
+                ],
+                "preference": "low",
+                "received": "datetime.datetime(2014, 3, 29, 1, 29, " +
+                            "19, 0, tzinfo=tzutc())",
+                "relayed_by": "",
+                "size": 636,
+                "total": 70320221545,
+                "ver": 1,
+                "vin_sz": 4,
+                "vout_sz": 1
+            }
         )
+        factories.PaymentBtcInvoiceFactory(
+            invoice=self.btc_invoice,
+            amount=703202215451
+        )
+        #self.btc_invoice.tx_ref = '4cff011ec53022f2ae47197d1a2fd4a6ac2a80139f4d0131c1fed625ed5dc869'
+        #self.btc_invoice.save()
+        #self.invoice_transaction = factories.InvoiceTransactionFactory(
+        #    invoice=self.btc_invoice,
+        #    tx_ref='4cff011ec53022f2ae47197d1a2fd4a6ac2a80139f4d0131c1f' +
+        #           'ed625ed5dc869'
+        #)
+
         self.btc_invoice.is_paid = True
         self.assertTrue(self.btc_invoice.has_changed())
         self.btc_invoice.save()
@@ -879,7 +1048,7 @@ class TestInvoice(TestCase):
         self.assertTrue(self.btc_invoice.is_paid)
 
     def test_values(self):
-        self.btc_invoice.amount = [1]
+        #self.btc_invoice.amount = [1]
         self.btc_invoice.save()
         values = self.btc_invoice.reset_original_values()
         self.assertEqual(values, {'is_paid': False})
@@ -894,7 +1063,11 @@ class TestInvoice(TestCase):
             tx_ref,
             '7981c7849294648c1e79dd16077a388b808fcf8c20035aec7cc5315b37dacfee'
         )
-
+        self.assertEqual(
+            self.btc_invoice.tx_ref,
+            tx_ref
+        )
+        '''
         invoice_transaction = models.InvoiceTransaction.objects.first()
         self.assertNotEqual(
             invoice_transaction,
@@ -908,6 +1081,7 @@ class TestInvoice(TestCase):
             invoice_transaction.tx_ref,
             '7981c7849294648c1e79dd16077a388b808fcf8c20035aec7cc5315b37dacfee'
         )
+        '''
     '''
     def test_can_be_confirmed(self):
 
@@ -965,7 +1139,7 @@ class TestInvoice(TestCase):
         can_be_confirmed = self.btc_invoice.can_be_confirmed()
         '''
 
-
+'''
 class TestInvoiceTransaction(TestCase):
 
     def setUp(self):
@@ -976,3 +1150,4 @@ class TestInvoiceTransaction(TestCase):
             self.invoice_transaction.__str__(),
             '4cff011ec53022f2ae47197d1a2fd4a6ac2a80139f4d0131c1fed625ed5dc869'
         )
+'''

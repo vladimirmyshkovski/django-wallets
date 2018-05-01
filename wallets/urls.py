@@ -19,12 +19,12 @@ urlpatterns = [
         name='webhook'
     ),
     re_path(
-        r'^invoices/$',
+        r'^invoices/(?P<wallet>[\w.@+-]+)/$',
         view=views.InvoiceListView.as_view(),
         name='invoice_list'
     ),
     re_path(
-        r'^invoices/(?P<pk>\d+)/$',
+        r'^invoices/(?P<pk>\d+)/_detail/$',
         view=views.InvoiceDetailView.as_view(),
         name='invoice_detail'
     ),

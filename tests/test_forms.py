@@ -128,7 +128,7 @@ class TestWithdrawForm(TestCase):
             '{} characters (it has {}).'.format(
                 length,
                 length + 1
-                )
+            )
         )
 
         form_data = {'address': string}
@@ -140,7 +140,7 @@ class TestWithdrawForm(TestCase):
             '{} characters (it has {}).'.format(
                 length,
                 length + 1
-                )
+            )
         )
 
         obj = factories.BcyFactory()
@@ -219,10 +219,11 @@ class TestPayForm(TestCase):
         self.user = factories.UserFactory()
         self.bcy = factories.BcyFactory(user=self.user)
         self.invoice = factories.BcyInvoiceFactory(
-            sender_wallet_object=self.bcy,
-            amount=[1]
-            )
-        self.invoice.receiver_wallet_object.add(self.bcy)
+            wallet=self.bcy,
+        )
+        self.payment = factories.PaymentBcyInvoiceFactory(
+            invoice=self.invoice
+        )
         self.form = forms.PayForm()
 
     def test_payload_field_label(self):
@@ -239,15 +240,10 @@ class TestPayForm(TestCase):
 
     def test_payload_field_with_valid_data(self):
 
-        def cmp(a, b):
-            return (a > b) - (a < b)
         import json
         data = json.dumps({
-                'membership_id': 1,
-                'invoice_id': 1,
-                'sender_user_id': 1,
-                'queue_id': 1
-            })
+            'membership_id': 1
+        })
         form_data = {
             'payload': data
         }
@@ -255,8 +251,8 @@ class TestPayForm(TestCase):
 
         self.assertTrue(form.is_valid())
         self.assertEqual(
-            cmp(form.cleaned_data['payload'], data),
-            0
+            form.cleaned_data['payload'],
+            data
         )
 
         data = ''
