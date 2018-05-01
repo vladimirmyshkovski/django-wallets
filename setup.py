@@ -67,7 +67,7 @@ setup(
         'psycopg2-binary',
         'django-guardian',
         'easy_cache',
-        'django-environ'
+        'django-environ',
         'behave_django'
         #'django-querysetsequence'
     ],
