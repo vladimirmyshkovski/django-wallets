@@ -634,7 +634,7 @@ class TestDash(TestCase):
             "total_sent": 0,
             "unconfirmed_balance": 0,
             "unconfirmed_n_tx": 0
-        }
+            }
         )
         overview = self.dash.overview
         self.assertEqual(
@@ -653,7 +653,7 @@ class TestDash(TestCase):
             "total_sent": 0,
             "unconfirmed_balance": 0,
             "unconfirmed_n_tx": 0
-        }
+            }
         )
         balance = self.dash.balance
         self.assertEqual(
