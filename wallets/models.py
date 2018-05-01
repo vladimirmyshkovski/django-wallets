@@ -46,7 +46,7 @@ class ApiKey(TimeStampedModel, SoftDeletableModel):
     def limit_hooks_hour(self):
         self.token_info['limits']['hooks/hour']
     '''
-
+    @ecached_property('is_expire:{self.id}', 60)
     def is_expire(self):
         info = blockcypher.get_token_info(self.api_key)
         limits = info['limits']

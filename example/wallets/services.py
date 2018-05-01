@@ -1,17 +1,13 @@
 import blockcypher
 from django.contrib.auth import get_user_model
-from .utils import get_wallet_model
-from django.conf import settings
-from wallets import models
-
-api_key = settings.BLOCKCYPHER_API_KEY
+from .utils import get_wallet_model, get_api_key
 
 
 def generate_new_address(user, coin_symbol):
     if isinstance(user, get_user_model()) and get_wallet_model(coin_symbol):
         r = blockcypher.generate_new_address(
             coin_symbol=coin_symbol,
-            api_key=api_key
+            api_key=get_api_key()
         )
         obj = get_wallet_model(coin_symbol).objects.create(
             user=user,
