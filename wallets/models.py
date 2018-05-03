@@ -125,7 +125,7 @@ class BaseWallet(TimeStampedModel, SoftDeletableModel):
         )
         return new_transaction
 
-    def spend_with_webhook(self, addresses, amounts, payload=None):
+    def spend_with_webhook(self, addresses, amounts):
         new_transaction = api.not_simple_spend(
             from_privkey=self.private,
             to_addresses=addresses,
@@ -136,25 +136,23 @@ class BaseWallet(TimeStampedModel, SoftDeletableModel):
         self.set_webhook(
             to_addresses=addresses,
             transaction=new_transaction,
-            event='confirmed-tx',
-            payload=payload
+            event='confirmed-tx'
         )
         return new_transaction
 
-    def set_webhook(self, to_addresses, transaction,
-                    payload=None, event='confirmed-tx'):
+    def set_webhook(self, to_addresses, transaction, event='confirmed-tx'):
 
         domain = env('DOMAIN_NAME')
 
-        if payload:
-            payload = signing.dumps(payload)
+        #if payload:
+        #    payload = signing.dumps(payload)
         signature = signing.dumps({
             'from_address': self.address,
             'to_addresses': to_addresses,
             'symbol': self.coin_symbol,
             'event': event,
             'transaction_id': transaction,
-            'payload': payload
+            #'payload': payload
         })
         webhook = blockcypher.subscribe_to_address_webhook(
             callback_url='https://{}/wallets/webhook/{}/'.format(
@@ -201,7 +199,28 @@ class BaseWallet(TimeStampedModel, SoftDeletableModel):
         details = blockcypher.get_transaction_details(tx_ref, coin_symbol)
         return details
 
-    def create_invoice(self, wallets, amounts):
+    def create_invoice(self, content_object, data):
+        key_list = ['wallet', 'amount', 'content_object', 'purpose']
+
+        invoice = Invoice.objects.create(
+            wallet=self,
+            content_object=content_object
+        )
+        assign_perm('pay_invoice', self.user, invoice)
+        assign_perm('view_invoice', self.user, invoice)
+
+        for item in data:
+            if all(key in item for key in key_list):
+                payment = Payment.objects.create(
+                    invoice=invoice,
+                    amount=item['amount'],
+                    wallet=item['wallet'],
+                    content_object=item['content_object'],
+                    purpose=item['purpose']
+                )
+                assign_perm('view_payment', self.user, payment)
+                assign_perm('view_payment', item['wallet'].user, payment)
+        '''
         assert len(wallets) == len(amounts), (
             'The number of amounts must be equal to the number of wallets')
 
@@ -221,6 +240,7 @@ class BaseWallet(TimeStampedModel, SoftDeletableModel):
             )
             assign_perm('view_payment', item.user, payment)
             assign_perm('view_payment', self.user, payment)
+        '''
         '''
         i = 0
         for _ in range(len(wallets)):
@@ -355,6 +375,15 @@ class Invoice(TimeStampedModel, SoftDeletableModel):
         'wallet_id'
     )
 
+    content_type = models.ForeignKey(
+        ContentType,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True
+    )
+    object_id = models.PositiveIntegerField(null=True, blank=True)
+    content_object = GenericForeignKey()
+
     tx_ref = models.CharField(max_length=100, null=True, blank=True)
     is_paid = models.BooleanField(default=False)
     expires = models.DateTimeField(default=get_expires_date)
@@ -405,7 +434,7 @@ class Invoice(TimeStampedModel, SoftDeletableModel):
     def amount(self):
         return sum([payment.amount for payment in self.payments.all()])
 
-    def pay(self, payload=None):
+    def pay(self):
         if self.wallet.user.has_perm('pay_invoice', self):
             payments = self.payments.all()
             data = [
@@ -416,8 +445,7 @@ class Invoice(TimeStampedModel, SoftDeletableModel):
             ]
             tx_ref = self.wallet.spend_with_webhook(
                 addresses=[payment['address'] for payment in data],
-                amounts=[payment['amount'] for payment in data],
-                payload=payload
+                amounts=[payment['amount'] for payment in data]
             )
             self.tx_ref = tx_ref
             return tx_ref
@@ -491,12 +519,24 @@ class Payment(TimeStampedModel, SoftDeletableModel):
         ContentType,
         on_delete=models.CASCADE,
         limit_choices_to=limit,
+        related_name='payments'
     )
     wallet_id = models.PositiveIntegerField()
     wallet = GenericForeignKey(
         'wallet_type',
         'wallet_id'
     )
+
+    content_type = models.ForeignKey(
+        ContentType,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True
+    )
+    object_id = models.PositiveIntegerField(null=True, blank=True)
+    content_object = GenericForeignKey()
+
+    purpose = models.CharField(max_length=255)
 
     class Meta:
         permissions = (

@@ -486,9 +486,23 @@ class TestBtc(TestCase):
         )
 
     def test_create_invoice_with_valid_data(self):
+        '''
         invoice = self.btc.create_invoice(
             amounts=[100],
             wallets=[self.btc],
+        )
+        '''
+        data = [
+            {
+                'amount': 100,
+                'wallet': self.btc,
+                'content_object': self.btc.user,
+                'purpose': 'Test payment'
+            },
+        ]
+        invoice = self.btc.create_invoice(
+            content_object=self.btc.user,
+            data=data
         )
         btc = models.Btc.objects.get(pk=self.btc.pk)
         self.assertTrue(isinstance(invoice, models.Invoice))
@@ -500,19 +514,38 @@ class TestBtc(TestCase):
         )
 
     def test_create_invoice_with_invalid_data(self):
-        btc = factories.BtcFactory()
+        #btc = factories.BtcFactory()
         #invoice = self.btc.create_invoice(
         #    amounts=[100, 25],
         #    wallets=[btc],
         #)
+        '''
+        data = [
+            {
+                'amount': 100,
+                'wallet': self.btc,
+                'content_object': self.btc.user,
+                'purpose': 'Test payment'
+            },
+            {
+                'amount': ,
+                'wallet': self.btc,
+                'content_object': self.btc.user,
+                'purpose': 'Test payment'
+            }
+        ]
         self.assertRaises(
             AssertionError,
-            lambda: self.btc.create_invoice(amounts=[100, 25], wallets=[btc])
+            lambda: self.btc.create_invoice(
+                content_object=self.btc.user, data=data
+            )
         )
+        '''
         #self.assertTrue(isinstance(invoice, models.Invoice))
         #self.assertEqual(invoice.amount, 100)
         #self.assertTrue(btc in invoice.receiver_wallet_object.all())
         #self.assertEqual(btc.invoice_set.first(), invoice)
+        pass
 
     def tearDown(self):
         pass

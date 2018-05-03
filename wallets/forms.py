@@ -55,6 +55,8 @@ class WithdrawForm(forms.Form):
 
 
 class PayForm(forms.Form):
+    pass
+    '''
     payload = forms.CharField(required=False)
 
     def clean_payload(self):
@@ -70,3 +72,4 @@ class PayForm(forms.Form):
             return json.dumps(json_data)
         else:
             return JSON_data
+    '''
