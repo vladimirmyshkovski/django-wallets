@@ -188,8 +188,8 @@ class GetWebhook(object):
             self.event = self.signal['event']
         if 'transaction_id' in self.signal:
             self.transaction_id = self.signal['transaction_id']
-        if 'paylaod' in self.signal:
-            self.paylaod = self.signal['paylaod']
+        if 'payload' in self.signal:
+            self.paylaod = self.signal['payload']
 
     def get_object(self):
         if self.symbol:

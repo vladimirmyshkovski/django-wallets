@@ -2,7 +2,7 @@ from django import forms
 from .utils import to_satoshi
 from django.core.exceptions import ValidationError
 from django.utils.translation import ugettext_lazy as _
-import json
+#import json
 
 
 class WithdrawForm(forms.Form):
@@ -53,7 +53,7 @@ class WithdrawForm(forms.Form):
             )
             return transaction
 
-
+"""
 class PayForm(forms.Form):
     pass
     '''
@@ -73,3 +73,4 @@ class PayForm(forms.Form):
         else:
             return JSON_data
     '''
+"""

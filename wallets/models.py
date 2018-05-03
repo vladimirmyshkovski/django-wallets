@@ -125,7 +125,7 @@ class BaseWallet(TimeStampedModel, SoftDeletableModel):
         )
         return new_transaction
 
-    def spend_with_webhook(self, addresses, amounts):
+    def spend_with_webhook(self, addresses, amounts, obj=None):
         new_transaction = api.not_simple_spend(
             from_privkey=self.private,
             to_addresses=addresses,
@@ -136,23 +136,35 @@ class BaseWallet(TimeStampedModel, SoftDeletableModel):
         self.set_webhook(
             to_addresses=addresses,
             transaction=new_transaction,
-            event='confirmed-tx'
+            event='confirmed-tx',
+            obj=None
         )
         return new_transaction
 
-    def set_webhook(self, to_addresses, transaction, event='confirmed-tx'):
+    def set_webhook(self, to_addresses, transaction,
+                    event='confirmed-tx', obj=None):
 
         domain = env('DOMAIN_NAME')
+        if obj:
+            data = {
+                'app_label': obj._meta.app_label,
+                'model': obj._meta.object_name,
+                'id': obj.id
+            }
 
         #if payload:
         #    payload = signing.dumps(payload)
+        if obj:
+            payload = signing.dumps(data)
+        else:
+            payload = ''
         signature = signing.dumps({
             'from_address': self.address,
             'to_addresses': to_addresses,
             'symbol': self.coin_symbol,
             'event': event,
             'transaction_id': transaction,
-            #'payload': payload
+            'payload': payload
         })
         webhook = blockcypher.subscribe_to_address_webhook(
             callback_url='https://{}/wallets/webhook/{}/'.format(

@@ -7,5 +7,6 @@ get_webhook = Signal(
         'symbol',
         'event',
         'transaction_id',
+        'payload'
     ]
 )

@@ -168,7 +168,8 @@ class WalletsWebhookView(View):
                 to_addresses=sign['to_addresses'],
                 symbol=sign['symbol'],
                 event=sign['event'],
-                transaction_id=sign['transaction_id']
+                transaction_id=sign['transaction_id'],
+                payload=sign['payload']
             )
             data = extract_webhook_id(signature, sign['symbol'])
             if data:
@@ -258,12 +259,13 @@ class InvoiceDetailView(LoginRequiredMixin, PermissionRequiredMixin,
     #form_class = PayForm
     #initial = {'payload': ''}
 
+    '''
     def get_form(self):
         if self.request.POST:
             return self.form_class(data=self.request.POST)
         else:
             return self.form_class
-
+    '''
     def get_context_data(self, **kwargs):
         context = super(InvoiceDetailView, self).get_context_data(**kwargs)
         #context['form'] = self.get_form()
