@@ -294,7 +294,8 @@ class TestGetWebhook(TestCase):
             'symbol': 'btc',
             'event': 'confirmed-tx',
             'transaction_id': '4cff011ec53022f2ae47197d1a2fd4a6ac' +
-                              '2a80139f4d0131c1fed625ed5dc869'
+                              '2a80139f4d0131c1fed625ed5dc869',
+            'payload': ''
         }
 
     def test_with_valid_data(self):
@@ -328,7 +329,8 @@ class TestCheckTransactionConfirmations(TestCase):
             'symbol': 'btc',
             'event': 'confirmed-tx',
             'transaction_id': '4cff011ec53022f2ae47197d1a2fd4a6ac' +
-                              '2a80139f4d0131c1fed625ed5dc869'
+                              '2a80139f4d0131c1fed625ed5dc869',
+            'payload': ''
         }
 
     def test_with_valid_data(self):

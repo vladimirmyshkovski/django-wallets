@@ -554,6 +554,16 @@ class Payment(TimeStampedModel, SoftDeletableModel):
         permissions = (
             ('view_payment', _('Can view payment')),
         )
+
+    @property
+    def text(self):
+        return 'User {user} paid {amount} {symbol} for {purpose} ({obj_id})'.format(
+            user=self.invoice.wallet.user,
+            amount=self.amount,
+            symbol=self.invoice.wallet.symbol,
+            purpose=self.purpose,
+            obj=self.content_object.__str__()
+            )
 '''
 @python_2_unicode_compatible
 class InvoiceTransaction(models.Model):
