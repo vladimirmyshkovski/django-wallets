@@ -395,7 +395,7 @@ class Invoice(TimeStampedModel, SoftDeletableModel):
         blank=True
     )
     object_id = models.PositiveIntegerField(null=True, blank=True)
-    content_object = GenericForeignKey()
+    content_object = GenericForeignKey('content_type', 'object_id')
 
     tx_ref = models.CharField(max_length=100, null=True, blank=True)
     is_paid = models.BooleanField(default=False)
@@ -547,7 +547,7 @@ class Payment(TimeStampedModel, SoftDeletableModel):
         blank=True
     )
     object_id = models.PositiveIntegerField(null=True, blank=True)
-    content_object = GenericForeignKey()
+    content_object = GenericForeignKey('content_type', 'object_id')
 
     purpose = models.CharField(max_length=255)
 

@@ -3,7 +3,7 @@ from django.utils.decorators import method_decorator
 from django.utils.translation import ugettext_lazy as _
 from django.http import JsonResponse, Http404
 from django.urls import reverse  # , reverse_lazy
-#from django.shortcuts import redirect
+from django.shortcuts import redirect
 from guardian.mixins import PermissionRequiredMixin, LoginRequiredMixin
 from django.views.generic import (DetailView, ListView, RedirectView,
                                   View, TemplateView, DeleteView)
@@ -16,7 +16,7 @@ from .utils import (decode_signin, extract_webhook_id,
 from .signals import get_webhook
 from .mixins import OwnerPermissionsMixin, CheckWalletMixin
 from .models import Invoice
-from .forms import WithdrawForm, PayForm
+from .forms import WithdrawForm  # , PayForm
 from .services import generate_new_address
 from .queries import get_payments, get_invoices
 
@@ -251,27 +251,28 @@ class InvoiceListView(LoginRequiredMixin, CheckWalletMixin, TemplateView):
 
 
 class InvoiceDetailView(LoginRequiredMixin, PermissionRequiredMixin,
-                        FormMixin, DetailView):
+                        DetailView):
 
     model = Invoice
     permission_required = ['wallets.view_invoice']
     raise_exception = True
-    form_class = PayForm
-    initial = {'payload': ''}
+    #form_class = PayForm
+    #initial = {'payload': ''}
 
+    '''
     def get_form(self):
         if self.request.POST:
             return self.form_class(data=self.request.POST)
         else:
             return self.form_class
-
+    '''
     def get_context_data(self, **kwargs):
         context = super(InvoiceDetailView, self).get_context_data(**kwargs)
-        context['form'] = self.get_form()
+        #context['form'] = self.get_form()
         return context
-
+    """
     def form_valid(self, form):
-        self.payload = form.cleaned_data['payload']
+        #self.payload = form.cleaned_data['payload']
 
         if self.request.user.has_perm('pay_invoice', self.object):
             balance = to_satoshi(float(self.object.wallet.balance))
@@ -281,9 +282,9 @@ class InvoiceDetailView(LoginRequiredMixin, PermissionRequiredMixin,
                     messages.error(self.request, _('Invoice expired'))
 
             if balance >= self.object.amount:
-                payload = self.payload
+                #payload = self.payload
                 try:
-                    self.object.pay(payload)
+                    self.object.pay()#payload)
                     if _messages:
                         messages.success(
                             self.request,
@@ -305,14 +306,48 @@ class InvoiceDetailView(LoginRequiredMixin, PermissionRequiredMixin,
                              to pay your invoice.''')
                     )
         return super(InvoiceDetailView, self).form_valid(form)
-
+    """
     def post(self, *args, **kwargs):
         self.object = self.get_object()
-        form = self.get_form()
-        if form.is_valid():
-            return self.form_valid(form)
-        else:
-            return self.form_invalid(form)
+
+        if self.request.user.has_perm('pay_invoice', self.object):
+            balance = to_satoshi(float(self.object.wallet.balance))
+
+            if self.object.is_expired:
+                if _messages:
+                    messages.error(self.request, _('Invoice expired'))
+
+            if balance >= self.object.amount:
+                #payload = self.payload
+                try:
+                    self.object.pay()  # payload)
+                    if _messages:
+                        messages.success(
+                            self.request,
+                            _('''The account was successfully sent.
+                                 Wait for transaction {}
+                                confirmation.'''.format(self.object.tx_ref))
+                        )
+                except:
+                    if _messages:
+                        messages.error(
+                            self.request,
+                            _('Something went wrong. Try again later')
+                        )
+            else:
+                if _messages:
+                    messages.error(
+                        self.request,
+                        _('''You do not have enough funds
+                             to pay your invoice.''')
+                    )
+
+        #form = self.get_form()
+        #if form.is_valid():
+        #    return self.form_valid(form)
+        #else:
+        #    return self.form_invalid(form)
+        return redirect(self.get_success_url())
 
     def get_success_url(self):
         return reverse(

@@ -145,7 +145,15 @@ def unsubscribe_from_webhook(api_key, webhook_id, coin_symbol):
 
 def get_wallet_model(symbol):
     from .models import Btc, Ltc, Doge, Dash, Bcy
+    data = {
+        'btc': Btc, 'ltc': Ltc, 'dash': Dash, 'doge': Doge, 'bcy': Bcy
+    }
+    if symbol in data:
+        model = data[symbol]
+    else:
+        model = None
 
+    '''
     if symbol == 'btc':
         model = Btc
     elif symbol == 'ltc':
@@ -158,6 +166,7 @@ def get_wallet_model(symbol):
         model = Bcy
     else:
         model = None
+    '''
     return model
 
 
@@ -178,6 +187,15 @@ class GetWebhook(object):
         self.get_object()
 
     def parse_signal(self):
+        key_list = [
+            'from_address', 'to_addresses', 'symbol',
+            'event', 'transaction_id', 'payload'
+        ]
+        if all(key in self.signal for key in key_list):
+            for item in key_list:
+                setattr(self, item, self.signal[item])
+
+        '''
         if 'from_address' in self.signal:
             self.from_address = self.signal['from_address']
         if 'to_addresses' in self.signal:
@@ -188,8 +206,9 @@ class GetWebhook(object):
             self.event = self.signal['event']
         if 'transaction_id' in self.signal:
             self.transaction_id = self.signal['transaction_id']
-        if 'paylaod' in self.signal:
-            self.paylaod = self.signal['paylaod']
+        if 'payload' in self.signal:
+            self.paylaod = self.signal['payload']
+        '''
 
     def get_object(self):
         if self.symbol:
