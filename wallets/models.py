@@ -223,13 +223,14 @@ class BaseWallet(TimeStampedModel, SoftDeletableModel):
 
         for item in data:
             if all(key in item for key in key_list):
-                payment = Payment.objects.create(
+                payment = Payment(
                     invoice=invoice,
                     amount=item['amount'],
                     wallet=item['wallet'],
                     content_object=item['content_object'],
                     purpose=item['purpose']
                 )
+                payment.save()
                 assign_perm('view_payment', self.user, payment)
                 assign_perm('view_payment', item['wallet'].user, payment)
         '''
