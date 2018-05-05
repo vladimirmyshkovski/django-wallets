@@ -753,6 +753,97 @@ class TestInvoiceDetailView(TestCase):
         invoice = models.Invoice.objects.get(pk=pk)
         self.assertIsNotNone(invoice.tx_ref)
 
+
+class TestPaymentListView(TestCase):
+
+    def setUp(self):
+        self.user = factories.UserFactory()
+        self.btc = factories.BtcFactory(user=self.user)
+        self.btc_invoice = factories.BtcInvoiceFactory(wallet=self.btc)
+        self.payment = factories.PaymentBtcInvoiceFactory(
+            wallet=self.btc,
+            invoice=self.btc_invoice
+        )
+        assign_perm('view_payment', self.user, self.payment)
+
+    def test_redirect_if_not_logged_in(self):
+        resp = self.get('/wallets/payments/')
+        self.assertRedirects(
+            resp,
+            '/accounts/login/?next=/wallets/payments/',
+            fetch_redirect_response=False
+        )
+
+    def test_success_if_logged_in(self):
+        self.client.login(username=self.user.username, password='password')
+        resp = self.get('/wallets/payments/')
+        self.response_200(resp)
+
+    def test_view_url_accessible_by_name(self):
+        self.client.login(username=self.user.username, password='password')
+        resp = self.get(self.reverse('wallets:payment_list'))
+        self.response_200(resp)
+
+    def test_payment_list_in_context(self):
+        self.client.login(username=self.user.username, password='password')
+        self.get(self.reverse('wallets:payment_list'))
+        self.assertIsNotNone(self.get_context('payment_list'))
+
+    def test_view_uses_correct_template(self):
+        self.client.login(username=self.user.username, password='password')
+        resp = self.get('/wallets/payments/')
+        self.response_200(resp)
+        self.assertTemplateUsed(resp, 'wallets/payment_list.html')
+
+    def test_pagination(self):
+        for i in range(25):
+            payment = factories.PaymentBtcInvoiceFactory(
+                invoice=self.btc_invoice,
+                wallet=self.btc
+            )
+            assign_perm('view_payment', self.user, payment)
+        self.client.login(username=self.user.username, password='password')
+        resp = self.get(self.reverse('wallets:payment_list'))
+        self.response_200(resp)
+        self.assertEqual(
+            len(self.get_context('payment_list')),
+            10
+        )
+        self.assertTrue(self.get_context('is_paginated'))
+
+    def test_second_page_with_pagination(self):
+        for i in range(25):
+            payment = factories.PaymentBtcInvoiceFactory(
+                invoice=self.btc_invoice,
+                wallet=self.btc
+            )
+            assign_perm('view_payment', self.user, payment)
+
+        self.client.login(username=self.user.username, password='password')
+        resp = self.get(self.reverse('wallets:payment_list') + '?page=2')
+        self.response_200(resp)
+        self.assertEqual(
+            len(self.get_context('payment_list')),
+            10
+        )
+        self.assertTrue(self.get_context('is_paginated'))
+
+        self.client.login(username=self.user.username, password='password')
+        resp = self.get(self.reverse('wallets:payment_list') + '?page=3')
+        self.response_200(resp)
+        self.assertEqual(
+            len(self.get_context('payment_list')),
+            6
+        )
+        self.assertTrue(self.get_context('is_paginated'))
+
+    def test_empty_qs_if_user_has_no_perms(self):
+        self.payment.delete()
+        self.client.login(username=self.user.username, password='password')
+        self.get(self.reverse('wallets:payment_list'))
+        self.assertEqual(len(self.get_context('payment_list')), 0)
+
+
 """
 class TestInvoicePayView(TestCase):
     def setUp(self):

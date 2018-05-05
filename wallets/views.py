@@ -4,7 +4,8 @@ from django.utils.translation import ugettext_lazy as _
 from django.http import JsonResponse, Http404
 from django.urls import reverse  # , reverse_lazy
 from django.shortcuts import redirect
-from guardian.mixins import PermissionRequiredMixin, LoginRequiredMixin
+from guardian.mixins import (PermissionRequiredMixin, LoginRequiredMixin,
+                             PermissionListMixin)
 from django.views.generic import (DetailView, ListView, RedirectView,
                                   View, TemplateView, DeleteView)
 from django.views.generic.edit import FormMixin
@@ -12,10 +13,11 @@ from django.views.decorators.csrf import csrf_exempt
 #from django.shortcuts import get_object_or_404
 from .utils import (decode_signin, extract_webhook_id,
                     unsubscribe_from_webhook,
-                    validate_signin, to_satoshi)
+                    validate_signin, to_satoshi,
+                    get_wallet_model)
 from .signals import get_webhook
 from .mixins import OwnerPermissionsMixin, CheckWalletMixin
-from .models import Invoice
+from .models import Invoice, Payment
 from .forms import WithdrawForm  # , PayForm
 from .services import generate_new_address
 from .queries import get_payments, get_invoices
@@ -362,6 +364,27 @@ class InvoiceDeleteView(LoginRequiredMixin, PermissionRequiredMixin,
     model = Invoice
     permission_required = ['wallets.pay_invoice']
     raise_exception = True
+
+
+class PaymentListView(LoginRequiredMixin, ListView):
+
+    model = Payment
+    paginate_by = 10
+
+    def get_queryset(self):
+        queryset = super(PaymentListView, self).get_queryset()
+        qs = []
+        for symbol in ['btc', 'ltc', 'dash', 'doge', 'bcy']:
+            wallet_model = get_wallet_model(symbol)
+            if wallet_model:
+                wallets = wallet_model.objects.filter(user=self.request.user)
+                for wallet in wallets:
+                    for payment in wallet.payments.all():
+                        if self.request.user.has_perm('view_payment', payment):
+                            qs.append(payment.id)
+            else:
+                return []
+        return queryset.filter(id__in=qs)
 
 """
 class InvoicePayView(LoginRequiredMixin,

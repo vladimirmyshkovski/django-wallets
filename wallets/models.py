@@ -17,6 +17,7 @@ from django.core.validators import MinValueValidator
 from guardian.shortcuts import assign_perm
 from easy_cache import ecached_property
 from django.utils import timezone
+from django.utils.html import format_html
 from .managers import ApiKeyManager
 from .utils import get_expires_date, from_satoshi, get_api_key
 from . import api
@@ -93,6 +94,7 @@ class BaseWallet(TimeStampedModel, SoftDeletableModel):
 
     class Meta:
         abstract = True
+        ordering = ['id']
 
     def __str__(self):
         return '({}) {}'.format(
@@ -402,6 +404,7 @@ class Invoice(TimeStampedModel, SoftDeletableModel):
     expires = models.DateTimeField(default=get_expires_date)
 
     class Meta:
+        ordering = ['id']
         permissions = (
             ('view_invoice', _('Can view invoice')),
             ('pay_invoice', _('Can pay invoice')),
@@ -552,19 +555,38 @@ class Payment(TimeStampedModel, SoftDeletableModel):
     purpose = models.CharField(max_length=255)
 
     class Meta:
+        ordering = ['id']
         permissions = (
             ('view_payment', _('Can view payment')),
         )
 
     @property
     def text(self):
-        return 'User {user} paid {amount} {symbol} for {purpose} ({obj_id})'.format(
+        return 'User {user} paid {amount} {symbol} for {purpose} ({obj})'.format(
             user=self.invoice.wallet.user,
             amount=self.amount,
-            symbol=self.invoice.wallet.symbol,
+            symbol=self.invoice.wallet.coin_symbol.upper(),
             purpose=self.purpose,
             obj=self.content_object.__str__()
             )
+
+    @property
+    def html(self):
+        try:
+            html = format_html(
+                'User <a href="{}">{}</a> paid {} {} for' +
+                ' {} <a href="{}">({})</a>',
+                self.invoice.wallet.user.get_absolute_url(),
+                self.invoice.wallet.user,
+                self.amount,
+                self.invoice.wallet.coin_symbol.upper(),
+                self.purpose,
+                self.content_object.get_absolute_url(),
+                self.content_object.__str__()
+            )
+            return html
+        except:
+            return ''
 '''
 @python_2_unicode_compatible
 class InvoiceTransaction(models.Model):
