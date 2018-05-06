@@ -302,10 +302,13 @@ class BaseWallet(TimeStampedModel, SoftDeletableModel):
     @classmethod
     def get_rate(cls):
         coin_name = cls.get_coin_name()
-        response = requests.get(
-            'https://api.coinmarketcap.com/v1/ticker/{}/'.format(coin_name))
-        json_response = response.json()
-        return json_response[0]['price_usd']
+        try:
+            response = requests.get(
+                'https://api.coinmarketcap.com/v1/ticker/{}/'.format(coin_name))
+            json_response = response.json()
+            return round(float(json_response[0]['price_usd']), 2)
+        except:
+            return 0
     '''
     @ecached_property('total_balance:{self.id}', 60)
     def total_balance(self):

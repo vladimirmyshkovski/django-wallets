@@ -1,4 +1,4 @@
-from .utils import get_wallet_model
+from .utils import get_wallet_model, from_satoshi
 from itertools import chain
 
 
@@ -119,25 +119,25 @@ def get_user_wallet_balance(user, symbol):
     wallet_model = get_wallet_model(symbol)
     if wallet_model:
         wallets = wallet_model.objects.filter(user=user)
-        return sum([wallet.balance for wallet in wallets])
+        return from_satoshi(sum([wallet.balance for wallet in wallets]))
 
 
 def get_user_wallet_balance_usd(user, symbol):
     wallet_model = get_wallet_model(symbol)
     rate = wallet_model.get_rate()
     balance = get_user_wallet_balance(user, symbol)
-    return balance * rate
-
-
+    return round((balance * rate), 3)
+'''
 def get_user_total_balance(user):
     balance = 0
     for symbol in ['btc', 'ltc', 'dash', 'doge', 'bcy']:
-        balance += get_user_wallet_balance(user, symbol)
-    return balance
+        balance += float(get_user_wallet_balance(user, symbol))
+    return roundbalance
+'''
 
 
 def get_user_total_balance_usd(user):
     balance = 0
     for symbol in ['btc', 'ltc', 'dash', 'doge', 'bcy']:
-        balance += get_user_wallet_balance_usd(user, symbol)
-    return balance
+        balance += float(get_user_wallet_balance_usd(user, symbol))
+    return round(balance, 3)
