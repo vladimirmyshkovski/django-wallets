@@ -1,6 +1,8 @@
 from django import template
 from ..queries import (get_user_total_earned_usd, get_user_total_balance_usd,
                        get_user_wallet_balance, get_user_wallet_balance_usd)
+
+
 register = template.Library()
 
 '''
