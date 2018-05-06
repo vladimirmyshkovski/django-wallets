@@ -86,7 +86,7 @@ def get_total_user_usd_balance(user):
         total_balance += bcy.total_usd_balance
     return total_balance
 
-
+'''
 def user_total_earned(user):
     qs = []
     for symbol in ['btc', 'ltc', 'dash', 'doge', 'bcy']:
@@ -98,6 +98,7 @@ def user_total_earned(user):
                     if user.has_perm('view_payment', payment):
                         qs.append(payment.amount)
     return sum(qs)
+'''
 
 
 def user_total_earned_usd(user):

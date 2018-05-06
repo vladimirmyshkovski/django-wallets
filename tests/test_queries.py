@@ -1,13 +1,12 @@
 from django.test import TestCase
-from .factories import (UserFactory, PaymentBcyInvoiceFactory,
-                        BcyFactory, BcyInvoiceFactory,
-                        BtcFactory, BtcInvoiceFactory,
+from .factories import (UserFactory, BtcFactory,
+                        BtcInvoiceFactory,
                         PaymentBtcInvoiceFactory)
 from wallets import queries
 from guardian.shortcuts import assign_perm
 from random import randint
 
-
+'''
 class TestUserTotalEarned(TestCase):
 
     def setUp(self):
@@ -30,6 +29,7 @@ class TestUserTotalEarned(TestCase):
     def test_without_payments(self):
         total = queries.user_total_earned(self.user)
         self.assertEqual(total, 0)
+'''
 
 
 class TestUserTotalEarnedUsd(TestCase):
@@ -49,7 +49,6 @@ class TestUserTotalEarnedUsd(TestCase):
             assign_perm('view_payment', self.user, payment)
 
         total = queries.user_total_earned_usd(self.user)
-        print(total)
         self.assertNotEqual(total, 0)
 
     def test_without_payments(self):
