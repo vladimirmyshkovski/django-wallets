@@ -1,6 +1,7 @@
 from django import template
 from ..utils import get_wallet_model
-from ..queries import get_count_unpaid_invoices, get_count_unpaid_payments
+from ..queries import (get_count_unpaid_invoices, get_count_unpaid_payments,
+                       user_total_earned, user_total_earned_usd)
 register = template.Library()
 
 
@@ -80,3 +81,19 @@ def count_unpaid_symbol(context, symbol):
             symbol=symbol
         )
         return count
+
+
+@register.simple_tag(takes_context=True)
+def total_earned(context):
+    request = context['request']
+    if request:
+        user = request.user
+        return user_total_earned(user)
+
+
+@register.simple_tag(takes_context=True)
+def total_earned_user(context):
+    request = context['request']
+    if request:
+        user = request.user
+        return user_total_earned_usd(user)

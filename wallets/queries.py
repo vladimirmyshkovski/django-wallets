@@ -1,5 +1,6 @@
 from .utils import get_wallet_model
 from itertools import chain
+from .models import Payment
 
 
 def get_payments(user, symbol):
@@ -84,3 +85,31 @@ def get_total_user_usd_balance(user):
     if bcy:
         total_balance += bcy.total_usd_balance
     return total_balance
+
+
+def user_total_earned(user):
+    qs = []
+    for symbol in ['btc', 'ltc', 'dash', 'doge', 'bcy']:
+        wallet_model = get_wallet_model(symbol)
+        if wallet_model:
+            wallets = wallet_model.objects.filter(user=user)
+            for wallet in wallets:
+                for payment in wallet.payments.filter(invoice__is_paid=True):
+                    if user.has_perm('view_payment', payment):
+                        qs.append(payment.amount)
+    return sum(qs)
+
+
+def user_total_earned_usd(user):
+    qs = []
+    for symbol in ['btc', 'ltc', 'dash', 'doge', 'bcy']:
+        wallet_model = get_wallet_model(symbol)
+        if wallet_model:
+            wallets = wallet_model.objects.filter(user=user)
+            for wallet in wallets:
+                for payment in wallet.payments.filter(invoice__is_paid=True):
+                    if user.has_perm('view_payment', payment):
+                        rate = payment.wallet.__class__.get_rate()
+                        amount = round(payment.amount * float(rate), 2)
+                        qs.append(amount)
+    return round(sum(qs), 2)
