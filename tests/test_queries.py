@@ -48,9 +48,9 @@ class TestUserTotalEarnedUsd(TestCase):
             )
             assign_perm('view_payment', self.user, payment)
 
-        total = queries.user_total_earned_usd(self.user)
+        total = queries.get_user_total_earned_usd(self.user)
         self.assertNotEqual(total, 0)
 
     def test_without_payments(self):
-        total = queries.user_total_earned_usd(self.user)
+        total = queries.get_user_total_earned_usd(self.user)
         self.assertEqual(total, 0)

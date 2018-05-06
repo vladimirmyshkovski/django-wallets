@@ -306,7 +306,7 @@ class BaseWallet(TimeStampedModel, SoftDeletableModel):
             'https://api.coinmarketcap.com/v1/ticker/{}/'.format(coin_name))
         json_response = response.json()
         return json_response[0]['price_usd']
-
+    '''
     @ecached_property('total_balance:{self.id}', 60)
     def total_balance(self):
         balance = 0
@@ -338,7 +338,7 @@ class BaseWallet(TimeStampedModel, SoftDeletableModel):
         for address in queryset():
             balance += address.balance
         return balance * self.get_rate()
-
+    '''
 
 @python_2_unicode_compatible
 class Btc(BaseWallet):

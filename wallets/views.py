@@ -42,10 +42,6 @@ class AllUserWalletsList(LoginRequiredMixin, TemplateView):
 
     def get_context_data(self, **kwargs):
         context = super(AllUserWalletsList, self).get_context_data(**kwargs)
-        context['btc_wallets'] = self.request.user.btc_wallets.all()
-        context['ltc_wallets'] = self.request.user.ltc_wallets.all()
-        context['dash_wallets'] = self.request.user.dash_wallets.all()
-        context['doge_wallets'] = self.request.user.doge_wallets.all()
         return context
 
 

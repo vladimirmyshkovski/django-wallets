@@ -478,13 +478,13 @@ class TestBtc(TestCase):
             type(transaction_details),
             type({})
         )
-
+    '''
     def test_total_balance(self):
         self.assertEqual(
             type(self.btc.total_balance),
             type(1)
         )
-
+    '''
     def test_create_invoice_with_valid_data(self):
         '''
         invoice = self.btc.create_invoice(
@@ -618,12 +618,13 @@ class TestLtc(TestCase):
             type(balance),
             type(1)
         )
-
+    '''
     def test_total_balance(self):
         self.assertEqual(
             type(self.ltc.total_balance),
             type(1)
         )
+    '''
 
 
 class TestDash(TestCase):
@@ -693,12 +694,13 @@ class TestDash(TestCase):
             type(balance),
             type(1)
         )
-
+    '''
     def test_total_balance(self):
         self.assertEqual(
             type(self.dash.total_balance),
             type(1)
         )
+    '''
 
 
 class TestDoge(TestCase):
@@ -768,12 +770,13 @@ class TestDoge(TestCase):
             type(balance),
             type(1)
         )
-
+    '''
     def test_total_balance(self):
         self.assertEqual(
             type(self.doge.total_balance),
             type(1)
         )
+    '''
 
 
 class TestBcy(TestCase):
@@ -842,13 +845,13 @@ class TestBcy(TestCase):
             type(balance),
             type(1)
         )
-
+    '''
     def test_total_balance(self):
         self.assertEqual(
             type(self.bcy.total_balance),
             type(1)
         )
-
+    '''
     def test_rate(self):
         rate = self.bcy.rate
         self.assertEqual(rate, 0)

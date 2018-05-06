@@ -1,9 +1,9 @@
 from django import template
-from ..queries import (get_count_unpaid_invoices, get_count_unpaid_payments,
-                       user_total_earned_usd, get_total_user_usd_balance)
+from ..queries import (get_user_total_earned_usd, get_user_total_balance_usd,
+                       get_user_wallet_balance, get_user_wallet_balance_usd)
 register = template.Library()
 
-
+'''
 @register.simple_tag(takes_context=True)
 def count_unpaid_invoices(context):
     request = context.get('request', None)
@@ -80,7 +80,7 @@ def count_unpaid_symbol(context, symbol):
             symbol=symbol
         )
         return count
-
+'''
 '''
 @register.simple_tag(takes_context=True)
 def total_earned(context):
@@ -92,16 +92,32 @@ def total_earned(context):
 
 
 @register.simple_tag(takes_context=True)
-def total_earned_usd(context):
+def total_user_earned_usd(context):
     request = context.get('request', None)
     if request:
         user = request.user
-        return user_total_earned_usd(user)
+        return get_user_total_earned_usd(user)
 
 
 @register.simple_tag(takes_context=True)
-def total_user_usd_balance(context):
+def total_user_balance_usd(context):
     request = context.get('request', None)
     if request:
         user = request.user
-        return get_total_user_usd_balance(user)
+        return get_user_total_balance_usd(user)
+
+
+@register.simple_tag(takes_context=True)
+def wallet_user_balance(context, wallet):
+    request = context.get('request', None)
+    if request:
+        user = request.user
+        return get_user_wallet_balance(user, wallet)
+
+
+@register.simple_tag(takes_context=True)
+def wallet_user_balance_usd(context, wallet):
+    request = context.get('request', None)
+    if request:
+        user = request.user
+        return get_user_wallet_balance_usd(user, wallet)

@@ -1,6 +1,5 @@
 from .utils import get_wallet_model
 from itertools import chain
-from .models import Payment
 
 
 def get_payments(user, symbol):
@@ -36,7 +35,7 @@ def get_count_unpaid_invoices(user, symbol):
         )
     return 0
 
-
+'''
 def get_total_user_balance(user):
     total_balance = 0
     btc = user.btc_wallets.first()
@@ -85,7 +84,7 @@ def get_total_user_usd_balance(user):
     if bcy:
         total_balance += bcy.total_usd_balance
     return total_balance
-
+'''
 '''
 def user_total_earned(user):
     qs = []
@@ -101,7 +100,7 @@ def user_total_earned(user):
 '''
 
 
-def user_total_earned_usd(user):
+def get_user_total_earned_usd(user):
     qs = []
     for symbol in ['btc', 'ltc', 'dash', 'doge', 'bcy']:
         wallet_model = get_wallet_model(symbol)
@@ -114,3 +113,31 @@ def user_total_earned_usd(user):
                         amount = round(payment.amount * float(rate), 2)
                         qs.append(amount)
     return round(sum(qs), 2)
+
+
+def get_user_wallet_balance(user, symbol):
+    wallet_model = get_wallet_model(symbol)
+    if wallet_model:
+        wallets = wallet_model.objects.filter(user=user)
+        return sum([wallet.balance for wallet in wallets])
+
+
+def get_user_wallet_balance_usd(user, symbol):
+    wallet_model = get_wallet_model(symbol)
+    rate = wallet_model.get_rate()
+    balance = get_user_wallet_balance(user, symbol)
+    return balance * rate
+
+
+def get_user_total_balance(user):
+    balance = 0
+    for symbol in ['btc', 'ltc', 'dash', 'doge', 'bcy']:
+        balance += get_user_wallet_balance(user, symbol)
+    return balance
+
+
+def get_user_total_balance_usd(user):
+    balance = 0
+    for symbol in ['btc', 'ltc', 'dash', 'doge', 'bcy']:
+        balance += get_user_wallet_balance_usd(user, symbol)
+    return balance
