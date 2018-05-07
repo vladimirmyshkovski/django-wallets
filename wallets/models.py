@@ -51,15 +51,17 @@ class ApiKey(TimeStampedModel, SoftDeletableModel):
     def is_expire(self):
         info = blockcypher.get_token_info(self.api_key)
         limits = info['limits']
-        current_api_hour = sum([
-            i['api/hour'] for i in info['hits_history']
-        ])
-        current_hooks_hour = sum([
-            i['hooks/hour'] for i in info['hits_history'] if 'hooks/hour' in i
-        ])
-        if current_api_hour < limits['api/hour'] and \
-           current_hooks_hour < limits['hooks/hour']:
-            return False
+        hits_history = info.get('hits_history', None)
+        if hits_history:
+            current_api_hour = sum([
+                i['api/hour'] for i in hits_history
+            ])
+            current_hooks_hour = sum([
+                i['hooks/hour'] for i in hits_history if 'hooks/hour' in i
+            ])
+            if current_api_hour < limits['api/hour'] and \
+               current_hooks_hour < limits['hooks/hour']:
+                return False
         return True
 
     def __str__(self):
@@ -146,7 +148,7 @@ class BaseWallet(TimeStampedModel, SoftDeletableModel):
     def set_webhook(self, to_addresses, transaction,
                     event='confirmed-tx', obj=None):
 
-        domain = env('DOMAIN_NAME')
+        domain = env('DOMAIN_NAME', default='localhost')
         if obj:
             data = {
                 'app_label': obj._meta.app_label,

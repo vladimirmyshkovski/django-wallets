@@ -172,22 +172,22 @@ class TestWalletsListView(TestCase):
         )
         resp = self.get(self.reverse('wallets:list', wallet='btc'))
         self.response_200(resp)
-        self.assertEqual(resp.context['total_balance'], 4433416)
+        self.assertEqual(resp.context['total_balance'], 0.04433416)
         self.assertEqual(resp.context['symbol'], 'btc')
 
         resp = self.get(self.reverse('wallets:list', wallet='ltc'))
         self.response_200(resp)
-        self.assertEqual(resp.context['total_balance'], 4433416)
+        self.assertEqual(resp.context['total_balance'], 0.04433416)
         self.assertEqual(resp.context['symbol'], 'ltc')
 
         resp = self.get(self.reverse('wallets:list', wallet='dash'))
         self.response_200(resp)
-        self.assertEqual(resp.context['total_balance'], 4433416)
+        self.assertEqual(resp.context['total_balance'], 0.04433416)
         self.assertEqual(resp.context['symbol'], 'dash')
 
         resp = self.get(self.reverse('wallets:list', wallet='doge'))
         self.response_200(resp)
-        self.assertEqual(resp.context['total_balance'], 4433416)
+        self.assertEqual(resp.context['total_balance'], 0.04433416)
         self.assertEqual(resp.context['symbol'], 'doge')
 
     def test_queryset(self):

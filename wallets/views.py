@@ -20,7 +20,8 @@ from .mixins import OwnerPermissionsMixin, CheckWalletMixin
 from .models import Invoice, Payment
 from .forms import WithdrawForm  # , PayForm
 from .services import generate_new_address
-from .queries import get_payments, get_invoices
+from .queries import (get_payments, get_invoices,
+                      get_user_wallet_balance, get_user_wallet_balance_usd)
 
 try:
     _messages = 'django.contrib.messages' in settings.INSTALLED_APPS
@@ -87,11 +88,15 @@ class WalletsListView(BaseWalletMixin, ListView):
 
     def get_context_data(self, **kwargs):
         context = super(WalletsListView, self).get_context_data(**kwargs)
-        balance = 0
-        for address in self.get_queryset():
-            balance += address.balance
-        context['total_balance'] = balance
-        context['symbol'] = self.wallet.get_coin_symbol()
+        context['total_balance'] = get_user_wallet_balance(
+            user=self.request.user,
+            symbol=self.kwargs['wallet']
+        )
+        context['total_balance_usd'] = get_user_wallet_balance_usd(
+            user=self.request.user,
+            symbol=self.kwargs['wallet']
+        )
+        context['symbol'] = self.kwargs['wallet']
         return context
 
     def dispatch(self, request, *args, **kwargs):
