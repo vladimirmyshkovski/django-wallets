@@ -206,6 +206,7 @@ class InvoiceListView(LoginRequiredMixin, CheckWalletMixin, TemplateView):
                 user=self.request.user,
                 symbol=self.symbol
             )
+            context['symbol'] = self.symbol
         '''
         symbols = ['btc', 'ltc', 'dash', 'doge', 'bcy']
         context['symbols'] = symbols

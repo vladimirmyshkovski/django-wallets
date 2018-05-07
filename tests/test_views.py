@@ -563,6 +563,7 @@ class TestInvoiceListView(TestCase):
             self.btc_invoice in self.get_context('invoices'),
         )
         self.assertIsNotNone(self.get_context('payments'))
+        self.assertEqual(self.get_context('symbol'), 'btc')
 
         self.client.login(username=self.user.username, password='password')
         self.get('/wallets/invoices/ltc/')
@@ -570,6 +571,7 @@ class TestInvoiceListView(TestCase):
             self.ltc_invoice in self.get_context('invoices'),
         )
         self.assertIsNotNone(self.get_context('payments'))
+        self.assertEqual(self.get_context('symbol'), 'ltc')
 
         self.client.login(username=self.user.username, password='password')
         self.get('/wallets/invoices/dash/')
@@ -577,6 +579,7 @@ class TestInvoiceListView(TestCase):
             self.dash_invoice in self.get_context('invoices'),
         )
         self.assertIsNotNone(self.get_context('payments'))
+        self.assertEqual(self.get_context('symbol'), 'dash')
 
         self.client.login(username=self.user.username, password='password')
         self.get('/wallets/invoices/doge/')
@@ -584,6 +587,7 @@ class TestInvoiceListView(TestCase):
             self.doge_invoice in self.get_context('invoices'),
         )
         self.assertIsNotNone(self.get_context('payments'))
+        self.assertEqual(self.get_context('symbol'), 'doge')
 
     def test_view_uses_correct_template(self):
         self.client.login(
