@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 
 def get_api_key():
     from .models import ApiKey
-    api_key = env('DEFAULT_BLOCKCYPHER_API_KEY', default='')
+    api_key = env('DEFAULT_BLOCKCYPHER_API_KEY', default='FAKE_API_KEY')
     ApiKey.objects.get_or_create(api_key=api_key)
     return ApiKey.live.first()
 
