@@ -204,7 +204,7 @@ class GetWebhook(object):
     def parse_signal(self):
         key_list = [
             'from_address', 'to_addresses', 'symbol',
-            'event', 'transaction_id', 'payload'
+            'event', 'transaction_id'
         ]
         if all(key in self.signal for key in key_list):
             for item in key_list:
