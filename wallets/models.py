@@ -63,8 +63,8 @@ class ApiKey(TimeStampedModel, SoftDeletableModel):
             ])
             if current_api_hour < limits['api/hour'] and \
                current_hooks_hour < limits['hooks/hour']:
-                return True
-        return False
+                return False
+        return True
 
     def __str__(self):
         return self.api_key
