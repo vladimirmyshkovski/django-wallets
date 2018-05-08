@@ -132,6 +132,9 @@ def extract_webhook_id(signature, coin_symbol):
                 if webhook['event'] == 'tx-confirmation':
                     if webhook['confirmations'] >= CONFIRMATIONS:
                         can_unsubscribe = True
+                print('API_KEY', api_key)
+                print('WEBHOOK_ID', webhook_id)
+                print('CAN_UNSUBSCRIBE', can_unsubscribe)
                 return {
                     'api_key': api_key,
                     'webhook_id': webhook_id,
@@ -260,6 +263,7 @@ class CheckTransactionConfirmations(GetWebhook):
             print('CONFIRMATIONS', self.transaction['confirmations'])
             if self.transaction['confirmations'] >= self.confirmations:
                 self.confirmed = True
+            print('CONFIRMED IN WALLET', self.confirmed)
 
     def processing(self):
         self.find_transaction()
