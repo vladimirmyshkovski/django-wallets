@@ -228,7 +228,8 @@ class TestUnsubscribeFromWebhook(TestCase):
         unsubscribe = utils.unsubscribe_from_webhook(
             webhook_id='8c125014-7d70-41ca-8ed1-4cc4264894e3',
             api_key=utils.get_api_key(),
-            coin_symbol='btc'
+            coin_symbol='btc',
+            can_unsubscribe=True
         )
         self.assertTrue(unsubscribe)
 

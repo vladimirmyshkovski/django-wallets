@@ -15,6 +15,7 @@ from django.urls import reverse
 
 env = environ.Env()
 logger = logging.getLogger(__name__)
+CONFIRMATIONS = env('CONFIRMATIONS', default=6)
 
 
 def get_api_key():
@@ -123,23 +124,34 @@ def extract_webhook_id(signature, coin_symbol):
     api_keys = get_all_api_keys()
     for api_key in api_keys:
         webhook_id = None
+        can_unsubscribe = False
         webhooks = blockcypher.list_webhooks(api_key, coin_symbol=coin_symbol)
         for webhook in webhooks:
             if webhook['url'].endswith(signature + '/'):
                 webhook_id = webhook['id']
-                return webhook_id
-        return {
-            'api_key': api_key,
-            'webhook_id': webhook_id
-        }
+                if webhook['event'] == 'tx-confirmation':
+                    if webhook['confirmations'] >= CONFIRMATIONS:
+                        can_unsubscribe = True
+                return {
+                    'api_key': api_key,
+                    'webhook_id': webhook_id,
+                    'can_unsubscribe': can_unsubscribe
+                }
+                #return webhook_id
+        #return {
+        #    'api_key': api_key,
+        #    'webhook_id': webhook_id
+        #}
 
 
-def unsubscribe_from_webhook(api_key, webhook_id, coin_symbol):
-    unsubscribe = blockcypher.unsubscribe_from_webhook(
-        api_key,
-        webhook_id,
-        coin_symbol=coin_symbol
-    )
+def unsubscribe_from_webhook(api_key, webhook_id,
+                             can_unsubscribe, coin_symbol):
+    if can_unsubscribe:
+        unsubscribe = blockcypher.unsubscribe_from_webhook(
+            api_key,
+            webhook_id,
+            coin_symbol=coin_symbol
+        )
     return unsubscribe
 
 
@@ -230,7 +242,7 @@ class GetWebhook(object):
 
 class CheckTransactionConfirmations(GetWebhook):
     """docstring for CheckTransactionConfirmations"""
-    def __init__(self, signal, confirmations=6):
+    def __init__(self, signal, confirmations=CONFIRMATIONS):
         super(CheckTransactionConfirmations, self).__init__(signal)
         self.confirmations = confirmations
         self.confirmed = False

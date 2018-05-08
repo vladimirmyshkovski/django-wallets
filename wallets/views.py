@@ -173,12 +173,14 @@ class WalletsWebhookView(View):
                 symbol=sign['symbol'],
                 event=sign['event'],
                 transaction_id=sign['transaction_id'],
-                payload=sign['payload']
             )
             data = extract_webhook_id(signature, sign['symbol'])
             if data:
                 unsubscribe_from_webhook(
-                    data['api_key'], data['webhook_id'], sign['symbol']
+                    api_key=data['api_key'],
+                    webhook_id=data['webhook_id'],
+                    coin_symbol=sign['symbol'],
+                    can_unsubscribe=data['can_unsubscribe']
                 )
         except:
             pass
