@@ -102,7 +102,7 @@ def decode_signin(signature, max_age=60*60*24*30):
 
 def validate_signin(data):
     key_list = ['from_address', 'to_addresses', 'symbol', 'event',
-                'transaction_id']
+                'transaction_id', 'invoice_id', 'content_type']
     symbol_list = ['bcy', 'btc', 'ltc', 'dash', 'doge']
     event_list = ['tx-confidence', 'double-spend-tx', 'tx-confirmation',
                   'confirmed-tx', 'new-block', 'unconfirmed-tx']
@@ -121,7 +121,8 @@ def extract_webhook_id(signature, coin_symbol):
         for webhook in webhooks:
             if webhook['url'].endswith(signature + '/'):
                 webhook_id = webhook['id']
-                if webhook['event'] == 'tx-confirmation':
+                webhook_confirmations = webhook.get('confirmations', None)
+                if webhook_confirmations:
                     if webhook['confirmations'] >= CONFIRMATIONS:
                         can_unsubscribe = True
                 print('API_KEY', api_key)

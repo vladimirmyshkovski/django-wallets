@@ -173,6 +173,8 @@ class WalletsWebhookView(View):
                 symbol=sign['symbol'],
                 event=sign['event'],
                 transaction_id=sign['transaction_id'],
+                invoice_id=sign['invoice_id'],
+                content_object=sign['content_object']
             )
             data = extract_webhook_id(signature, sign['symbol'])
             if data:

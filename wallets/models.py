@@ -133,7 +133,7 @@ class BaseWallet(TimeStampedModel, SoftDeletableModel):
         )
         return new_transaction
 
-    def spend_with_webhook(self, addresses, amounts):
+    def spend_with_webhook(self, addresses, amounts, invoice=None, obj=None):
         new_transaction = api.not_simple_spend(
             from_privkey=self.private,
             to_addresses=addresses,
@@ -144,19 +144,33 @@ class BaseWallet(TimeStampedModel, SoftDeletableModel):
         self.set_webhook(
             to_addresses=addresses,
             transaction=new_transaction,
-            event='tx-confirmation',
+            obj=obj,
+            invoice=invoice,
+            event='tx-confirmation'
         )
         return new_transaction
 
-    def set_webhook(self, to_addresses, transaction, event='tx-confirmation'):
+    def set_webhook(self, to_addresses, transaction,
+                    obj=None, invoice=None, event='tx-confirmation'):
 
         domain = env('DOMAIN_NAME', default='localhost')
+        if obj:
+            try:
+                obj = signing.dumps({
+                    'app_label': obj._meta.app_label,
+                    'model': obj._meta.model_name,
+                    'id': obj.id
+                })
+            except Exception:
+                obj = None
         signature = signing.dumps({
             'from_address': self.address,
             'to_addresses': to_addresses,
             'symbol': self.coin_symbol,
             'event': event,
             'transaction_id': transaction,
+            'invoice_id': invoice.id if invoice else None,
+            'content_object': obj
         })
         webhook = blockcypher.subscribe_to_address_webhook(
             callback_url='https://{}/wallets/webhook/{}/'.format(
@@ -454,7 +468,9 @@ class Invoice(TimeStampedModel, SoftDeletableModel):
             ]
             tx_ref = self.wallet.spend_with_webhook(
                 addresses=[payment['address'] for payment in data],
-                amounts=[payment['amount'] for payment in data]
+                amounts=[payment['amount'] for payment in data],
+                invoice=self,
+                obj=self.content_object
             )
             self.tx_ref = tx_ref
             return tx_ref
