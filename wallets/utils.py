@@ -9,9 +9,7 @@ from datetime import timedelta
 from django.utils import timezone
 from easy_cache import ecached
 from django.urls import reverse
-#from django.conf import settings
-#from functools import lru_cache
-#api_key = settings.BLOCKCYPHER_API_KEY
+
 
 env = environ.Env()
 logger = logging.getLogger(__name__)
@@ -20,8 +18,9 @@ CONFIRMATIONS = env('CONFIRMATIONS', default=6)
 
 def get_api_key():
     from .models import ApiKey
-    api_key = env('DEFAULT_BLOCKCYPHER_API_KEY', default='75ada547a1524310971733088eb068ec')
-    ApiKey.objects.get_or_create(api_key=api_key)
+    api_key = env('DEFAULT_BLOCKCYPHER_API_KEY')
+    if api_key:
+        ApiKey.objects.get_or_create(api_key=api_key)
     return ApiKey.live.first()
 
 
@@ -125,19 +124,11 @@ def extract_webhook_id(signature, coin_symbol):
                 if webhook_confirmations:
                     if webhook['confirmations'] >= CONFIRMATIONS:
                         can_unsubscribe = True
-                print('API_KEY', api_key)
-                print('WEBHOOK_ID', webhook_id)
-                print('CAN_UNSUBSCRIBE', can_unsubscribe)
                 return {
                     'api_key': api_key,
                     'webhook_id': webhook_id,
                     'can_unsubscribe': can_unsubscribe
                 }
-                #return webhook_id
-        #return {
-        #    'api_key': api_key,
-        #    'webhook_id': webhook_id
-        #}
 
 
 def unsubscribe_from_webhook(api_key, webhook_id,
@@ -152,29 +143,13 @@ def unsubscribe_from_webhook(api_key, webhook_id,
 
 
 def get_wallet_model(symbol):
+    model = None
     from .models import Btc, Ltc, Doge, Dash, Bcy
     data = {
         'btc': Btc, 'ltc': Ltc, 'dash': Dash, 'doge': Doge, 'bcy': Bcy
     }
     if symbol in data:
         model = data[symbol]
-    else:
-        model = None
-
-    '''
-    if symbol == 'btc':
-        model = Btc
-    elif symbol == 'ltc':
-        model = Ltc
-    elif symbol == 'dash':
-        model = Dash
-    elif symbol == 'doge':
-        model = Doge
-    elif symbol == 'bcy':
-        model = Bcy
-    else:
-        model = None
-    '''
     return model
 
 
@@ -203,37 +178,27 @@ class GetWebhook(object):
             for item in key_list:
                 setattr(self, item, self.signal[item])
 
-        '''
-        if 'from_address' in self.signal:
-            self.from_address = self.signal['from_address']
-        if 'to_addresses' in self.signal:
-            self.to_addresses = self.signal['to_addresses']
-        if 'symbol' in self.signal:
-            self.symbol = self.signal['symbol']
-        if 'event' in self.signal:
-            self.event = self.signal['event']
-        if 'transaction_id' in self.signal:
-            self.transaction_id = self.signal['transaction_id']
-        if 'payload' in self.signal:
-            self.paylaod = self.signal['payload']
-        '''
-
     def get_object(self):
         if self.symbol:
             wallet_content_type = ContentType.objects.get(
                 app_label='wallets',
                 model=self.symbol.lower()
             )
-            sender_wallet = wallet_content_type.get_object_for_this_type(
-                address=self.from_address
-            )
-            self.sender_wallet = sender_wallet
-
-            for address in self.to_addresses:
-                receiver_wallet = wallet_content_type.get_object_for_this_type(
-                    address=address
+            try:
+                sender_wallet = wallet_content_type.get_object_for_this_type(
+                    address=self.from_address
                 )
-                self.receiver_wallets.append(receiver_wallet)
+                self.sender_wallet = sender_wallet
+            except Exception:
+                self.sender_wallet = None
+            for address in self.to_addresses:
+                try:
+                    receiver_wallet = wallet_content_type.get_object_for_this_type(
+                        address=address
+                    )
+                    self.receiver_wallets.append(receiver_wallet)
+                except Exception:
+                    pass
 
 
 class CheckTransactionConfirmations(GetWebhook):
@@ -246,20 +211,15 @@ class CheckTransactionConfirmations(GetWebhook):
         self.processing()
 
     def find_transaction(self):
-        print('SENDER WALLET', self.sender_wallet)
         if self.sender_wallet:
             for transaction in self.sender_wallet.transactions:
-                print('TRANSACTION_ID', self.transaction_id)
-                print('TRANSACTION TX_HASH', transaction['tx_hash'])
                 if self.transaction_id in transaction['tx_hash']:
                     self.transaction = transaction
 
     def check_confirmations(self):
         if self.transaction:
-            print('CONFIRMATIONS', self.transaction['confirmations'])
             if self.transaction['confirmations'] >= self.confirmations:
                 self.confirmed = True
-            print('CONFIRMED IN WALLET', self.confirmed)
 
     def processing(self):
         self.find_transaction()

@@ -28,6 +28,11 @@ class DogeAdmin(BaseWalletAdmin):
     pass
 
 
+@admin.register(Bcy)
+class BcyAdmin(BaseWalletAdmin):
+    pass
+
+
 admin.site.register(ApiKey)
 admin.site.register(Invoice)
 admin.site.register(Payment)

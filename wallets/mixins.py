@@ -17,6 +17,7 @@ class OwnerPermissionsMixin(LoginRequiredMixin):
 class CheckWalletMixin():
 
     def check_wallet(self, symbol):
+        model = None
         if symbol == 'btc':
             model = Btc
         elif symbol == 'bcy':
@@ -27,6 +28,5 @@ class CheckWalletMixin():
             model = Dash
         elif symbol == 'doge':
             model = Doge
-        else:
-            model = None
+        self.model = model
         return model
