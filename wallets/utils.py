@@ -57,7 +57,7 @@ def from_satoshi(amount):
 
 
 def set_webhook(from_address, to_address, transaction_id, coin_symbol,
-                payload=None, event='confirmed-tx'):
+                payload=None, event='tx-confirmation'):
 
     domain = env('DOMAIN_NAME')
 

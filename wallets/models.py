@@ -142,13 +142,13 @@ class BaseWallet(TimeStampedModel, SoftDeletableModel):
         self.set_webhook(
             to_addresses=addresses,
             transaction=new_transaction,
-            event='confirmed-tx',
+            event='tx-confirmation',
             obj=None
         )
         return new_transaction
 
     def set_webhook(self, to_addresses, transaction,
-                    event='confirmed-tx', obj=None):
+                    event='tx-confirmation', obj=None):
 
         domain = env('DOMAIN_NAME', default='localhost')
         if obj:
