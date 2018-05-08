@@ -242,9 +242,11 @@ class CheckTransactionConfirmations(GetWebhook):
             for transaction in self.sender_wallet.transactions:
                 if self.transaction_id in transaction['tx_hash']:
                     self.transaction = transaction
+                    print('SELF TRANSACTION', self.transaction)
 
     def check_confirmations(self):
         if self.transaction:
+            print('CONFIRMATIONS', self.transaction['confirmations'])
             if self.transaction['confirmations'] >= self.confirmations:
                 self.confirmed = True
 
