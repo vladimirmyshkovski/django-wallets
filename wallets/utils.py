@@ -257,10 +257,9 @@ class CheckTransactionConfirmations(GetWebhook):
 
     def check_confirmations(self):
         if self.transaction:
-            print(self.transaction['confirmations'] >= self.confirmations)
+            print('CONFIRMATIONS', self.transaction['confirmations'])
             if self.transaction['confirmations'] >= self.confirmations:
                 self.confirmed = True
-        print('CONFIRMED IN WALLETS', self.confirmed)
 
     def processing(self):
         self.find_transaction()
