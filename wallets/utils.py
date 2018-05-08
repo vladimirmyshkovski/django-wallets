@@ -253,6 +253,7 @@ class CheckTransactionConfirmations(GetWebhook):
         self.processing()
 
     def find_transaction(self):
+        print('SENDER WALLET', self.sender_wallet)
         if self.sender_wallet:
             for transaction in self.sender_wallet.transactions:
                 print('TRANSACTION_ID', self.transaction_id)
