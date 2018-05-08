@@ -51,10 +51,12 @@ class ApiKey(TimeStampedModel, SoftDeletableModel):
     def is_expire(self):
         info = blockcypher.get_token_info(self.api_key)
         limits = info.get('limits', None)
+        hits_history = info.get('hits_history', None)
         if not limits:
             return True
-        hits_history = info.get('hits_history', None)
-        if hits_history:
+        if not hits_history:
+            return False
+        else:
             current_api_hour = sum([
                 i['api/hour'] for i in hits_history
             ])
