@@ -255,6 +255,8 @@ class CheckTransactionConfirmations(GetWebhook):
     def find_transaction(self):
         if self.sender_wallet:
             for transaction in self.sender_wallet.transactions:
+                print('TRANSACTION_ID', self.transaction_id)
+                print('TRANSACTION TX_HASH', transaction['tx_hash'])
                 if self.transaction_id in transaction['tx_hash']:
                     self.transaction = transaction
 
