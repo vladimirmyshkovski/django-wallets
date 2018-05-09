@@ -214,6 +214,14 @@ class BaseWallet(TimeStampedModel, SoftDeletableModel):
         )
         return overview['balance']
 
+    @ecached_property('natural_balance:{self.id}', 60)
+    def normal_balance(self):
+        return from_satoshi(self.balance)
+
+    @ecached_property('usd_balance:{self.id}', 60)
+    def usd_balance(self):
+        return round((self.normal_balance * self.__class__.get_rate()), 2)
+
     @ecached_property('transactions:{self.id}', 60)
     def transactions(self):
         get_address_full = self.address_details
@@ -286,7 +294,7 @@ class BaseWallet(TimeStampedModel, SoftDeletableModel):
             )
             json_response = response.json()
             return round(float(json_response[0]['price_usd']), 2)
-        except:
+        except Exception:
             return 0
 
 
@@ -400,6 +408,14 @@ class Invoice(TimeStampedModel, SoftDeletableModel):
     def amount(self):
         return sum([payment.amount for payment in self.payments.all()])
 
+    @property
+    def normal_amount(self):
+        return from_satoshi(self.amount)
+
+    @property
+    def usd_amount(self):
+        return round((self.normal_amount * self.wallet.get_rate()), 2)
+
     def pay(self):
         if self.wallet.user.has_perm('pay_invoice', self):
             payments = self.payments.all()
@@ -496,6 +512,14 @@ class Payment(TimeStampedModel, SoftDeletableModel):
         permissions = (
             ('view_payment', _('Can view payment')),
         )
+
+    @property
+    def normal_amount(self):
+        return from_satoshi(self.amount)
+
+    @property
+    def usd_amount(self):
+        return round((self.normal_amount * self.wallet.get_rate()), 2)
 
     @property
     def text(self):

@@ -18,7 +18,7 @@ CONFIRMATIONS = env('CONFIRMATIONS', default=6)
 
 def get_api_key():
     from .models import ApiKey
-    api_key = env('DEFAULT_BLOCKCYPHER_API_KEY')
+    api_key = env('DEFAULT_BLOCKCYPHER_API_KEY', '')
     if api_key:
         ApiKey.objects.get_or_create(api_key=api_key)
     return ApiKey.live.first()
@@ -38,7 +38,6 @@ def to_satoshi(amount):
             return int(amount * 100000000)
         except:
             raise ValueError('Can not convert string to float')
-
     else:
         raise ValueError('Amount must be float')
 
@@ -174,31 +173,40 @@ class GetWebhook(object):
             'from_address', 'to_addresses', 'symbol',
             'event', 'transaction_id'
         ]
-        if all(key in self.signal for key in key_list):
-            for item in key_list:
-                setattr(self, item, self.signal[item])
+        assert all(key in self.signal for key in key_list), (
+            'The data in the received signal is not enough'
+        )
+        for item in key_list:
+            setattr(self, item, self.signal[item])
 
     def get_object(self):
-        if self.symbol:
-            wallet_content_type = ContentType.objects.get(
-                app_label='wallets',
-                model=self.symbol.lower()
+        symbols = ['btc', 'ltc', 'dash', 'doge', 'bcy']
+        assert self.symbol in symbols, (
+            'Received unsupported coin symbol ({})'.format(self.symbol)
+        )
+
+        content_type = ContentType.objects.get(
+            app_label='wallets',
+            model=self.symbol.lower()
+        )
+        try:
+            sender_wallet = content_type.get_object_for_this_type(
+                address=self.from_address
             )
+            self.sender_wallet = sender_wallet
+
+        except Exception as e:
+            logger.exception(e)
+            self.sender_wallet = None
+
+        for address in self.to_addresses:
             try:
-                sender_wallet = wallet_content_type.get_object_for_this_type(
-                    address=self.from_address
+                receiver_wallet = content_type.get_object_for_this_type(
+                    address=address
                 )
-                self.sender_wallet = sender_wallet
-            except Exception:
-                self.sender_wallet = None
-            for address in self.to_addresses:
-                try:
-                    receiver_wallet = wallet_content_type.get_object_for_this_type(
-                        address=address
-                    )
-                    self.receiver_wallets.append(receiver_wallet)
-                except Exception:
-                    pass
+                self.receiver_wallets.append(receiver_wallet)
+            except Exception as e:
+                logger.exception(e)
 
 
 class CheckTransactionConfirmations(GetWebhook):
@@ -248,13 +256,21 @@ class Converter(object):
         }
 
     def validate(self):
-        assert self.currency_to != self.currency_from, '''
-        It is not possible to convert {} to {}'''.format(self.currency_to,
-                                                         self.currency_from)
-        assert self.currency_to in self.currencies, '''
-        The converter is not provided for {}'''.format(self.currency_to)
-        assert self.currency_from in self.currencies, '''
-        The converter is not provided for {}'''.format(self.currency_from)
+        assert self.currency_to != self.currency_from, (
+            'It is not possible to convert {} to {}'.format(
+                self.currency_to, self.currency_from
+            )
+        )
+        assert self.currency_to in self.currencies, (
+            'The converter is not provided for {}'.format(
+                self.currency_to
+            )
+        )
+        assert self.currency_from in self.currencies, (
+            'The converter is not provided for {}'.format(
+                self.currency_from
+            )
+        )
 
     @ecached('convert', 60)
     def convert(self):
@@ -263,13 +279,17 @@ class Converter(object):
 
         from_response = requests.get(
             'https://api.coinmarketcap.com/v1/ticker/{}/'.format(
-                currency_from)
+                currency_from
             )
+        )
         from_json_response = from_response.json()
         from_price_usd = from_json_response[0]['price_usd']
 
         to_response = requests.get(
-            'https://api.coinmarketcap.com/v1/ticker/{}/'.format(currency_to))
+            'https://api.coinmarketcap.com/v1/ticker/{}/'.format(
+                currency_to
+            )
+        )
         to_json_response = to_response.json()
         to_price_usd = to_json_response[0]['price_usd']
 
