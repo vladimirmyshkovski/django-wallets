@@ -18,9 +18,6 @@ CONFIRMATIONS = env('CONFIRMATIONS', default=6)
 
 def get_api_key():
     from .models import ApiKey
-    api_key = env('DEFAULT_BLOCKCYPHER_API_KEY', '')
-    if api_key:
-        ApiKey.objects.get_or_create(api_key=api_key)
     return ApiKey.live.first()
 
 
