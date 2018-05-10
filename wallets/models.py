@@ -232,7 +232,7 @@ class BaseWallet(TimeStampedModel, SoftDeletableModel):
         details = blockcypher.get_transaction_details(tx_ref, coin_symbol)
         return details
 
-    def create_invoice(self, content_object: object, data: dict) -> object:
+    def create_invoice(self, content_object: object, data: list) -> object:
         key_list = ['wallet', 'amount', 'content_object', 'purpose']
 
         invoice = Invoice.objects.create(
@@ -410,7 +410,7 @@ class Invoice(TimeStampedModel, SoftDeletableModel):
 
     @property
     def normal_amount(self):
-        return from_satoshi(self.amount)
+        return format(from_satoshi(self.amount), '.8f')
 
     @property
     def usd_amount(self):
@@ -515,7 +515,7 @@ class Payment(TimeStampedModel, SoftDeletableModel):
 
     @property
     def normal_amount(self):
-        return from_satoshi(self.amount)
+        return format(from_satoshi(self.amount), '.8f')
 
     @property
     def usd_amount(self):

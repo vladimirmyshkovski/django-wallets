@@ -309,9 +309,15 @@ class TestGetWebhook(TestCase):
         )
 
     def test_with_invalid_data(self):
-        get_webhook = utils.GetWebhook('FAKE_SIGNAL')
-        self.assertEqual(get_webhook.sender_wallet, None)
-        self.assertEqual(get_webhook.receiver_wallets, [])
+        self.assertRaises(
+            AssertionError,
+            lambda: utils.GetWebhook('FAKE_SIGNAL')
+        )
+        self.assertRaisesMessage(
+            AssertionError,
+            'The data in the received signal is not enough',
+            lambda: utils.GetWebhook('FAKE_SIGNAL')
+        )
 
 
 class TestCheckTransactionConfirmations(TestCase):
@@ -429,11 +435,14 @@ class TestCheckTransactionConfirmations(TestCase):
         self.assertTrue(ctc.confirmed)
 
     def test_with_invalid_data(self):
-        ctc = utils.CheckTransactionConfirmations('FAKE_SIGNAL')
-        self.assertFalse(ctc.confirmed)
-        self.assertEqual(
-            ctc.transaction,
-            None
+        self.assertRaises(
+            AssertionError,
+            lambda: utils.CheckTransactionConfirmations('FAKE_SIGNAL')
+        )
+        self.assertRaisesMessage(
+            AssertionError,
+            'The data in the received signal is not enough',
+            lambda: utils.CheckTransactionConfirmations('FAKE_SIGNAL')
         )
 
     def tearDown(self):
