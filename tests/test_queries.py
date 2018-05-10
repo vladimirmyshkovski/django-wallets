@@ -1,7 +1,9 @@
 from django.test import TestCase
 from .factories import (UserFactory, BtcFactory,
-                        BtcInvoiceFactory,
-                        PaymentBtcInvoiceFactory)
+                        LtcFactory, BtcInvoiceFactory,
+                        LtcInvoiceFactory,
+                        PaymentBtcInvoiceFactory,
+                        PaymentLtcInvoiceFactory)
 from wallets import queries
 from guardian.shortcuts import assign_perm
 from random import randint
@@ -128,3 +130,42 @@ class TestGetUserWalletBalance(TestCase):
             queries.get_user_wallet_balance(self.user, 'btc'),
             0.04433416
         )
+
+
+class TestGetAggregateInvoices(TestCase):
+    def setUp(self):
+        self.user = UserFactory()
+        self.btc = BtcFactory(user=self.user)
+        self.ltc = LtcFactory(user=self.user)
+
+    def test_with_values(self):
+        self.btc_invoice = BtcInvoiceFactory(
+            wallet=self.btc, content_object=self.user
+        )
+        self.ltc_invoice = LtcInvoiceFactory(
+            wallet=self.ltc, content_object=self.user
+        )
+        self.btc_payment_one = PaymentBtcInvoiceFactory(
+            invoice=self.btc_invoice, content_object=self.user,
+            wallet=self.btc, amount=100000000
+        )
+        self.btc_payment_two = PaymentBtcInvoiceFactory(
+            invoice=self.btc_invoice, content_object=self.user,
+            wallet=self.btc, amount=100000000
+        )
+        self.ltc_payment = PaymentLtcInvoiceFactory(
+            invoice=self.ltc_invoice, content_object=self.user,
+            wallet=self.ltc, amount=100000000
+        )
+        values = queries.get_aggregate_invoices(self.user)
+        self.assertTrue(type(values) is dict)
+        for item in values:
+            self.assertEqual(
+                item,
+                self.ltc_payment.modified.strftime('%d.%m.%Y')
+            )
+            self.assertTrue(values[item] > 0)
+
+    def test_without_values(self):
+        values = queries.get_aggregate_invoices(self.user)
+        self.assertTrue(type(values) is dict)

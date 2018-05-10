@@ -515,7 +515,7 @@ class Payment(TimeStampedModel, SoftDeletableModel):
 
     @property
     def normal_amount(self):
-        return format(from_satoshi(self.amount), '.8f')
+        return float(format(from_satoshi(self.amount), '.8f'))
 
     @property
     def usd_amount(self):

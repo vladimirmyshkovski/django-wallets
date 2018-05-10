@@ -1,7 +1,12 @@
+from itertools import chain, groupby
+
+from easy_cache import ecached
+
 from .utils import get_wallet_model, from_satoshi
-from itertools import chain
+from .models import Payment
 
 
+@ecached('get_payments_{user}_{symbol}', 300)
 def get_payments(user, symbol):
     wallet = get_wallet_model(symbol)
     if wallet:
@@ -10,6 +15,7 @@ def get_payments(user, symbol):
         return list(chain(*q))
 
 
+@ecached('get_invoices_{user}_{symbol}', 300)
 def get_invoices(user, symbol):
     wallet = get_wallet_model(symbol)
     if wallet:
@@ -18,6 +24,7 @@ def get_invoices(user, symbol):
         return list(chain(*q))
 
 
+@ecached('get_count_unpaid_payments_{user}_{symbol}', 300)
 def get_count_unpaid_payments(user, symbol):
     payments = get_payments(user, symbol)
     if payments:
@@ -27,6 +34,7 @@ def get_count_unpaid_payments(user, symbol):
     return 0
 
 
+@ecached('get_count_unpaid_invoices_{user}_{symbol}', 300)
 def get_count_unpaid_invoices(user, symbol):
     invoices = get_invoices(user, symbol)
     if invoices:
@@ -36,6 +44,7 @@ def get_count_unpaid_invoices(user, symbol):
     return 0
 
 
+@ecached('get_user_total_earned_usd_{user}', 300)
 def get_user_total_earned_usd(user):
     qs = []
     for symbol in ['btc', 'ltc', 'dash', 'doge', 'bcy']:
@@ -51,6 +60,7 @@ def get_user_total_earned_usd(user):
     return round(sum(qs), 2)
 
 
+@ecached('get_user_wallet_balance_{user}_{symbol}', 300)
 def get_user_wallet_balance(user, symbol):
     wallet_model = get_wallet_model(symbol)
     if wallet_model:
@@ -58,6 +68,7 @@ def get_user_wallet_balance(user, symbol):
         return from_satoshi(sum([wallet.balance for wallet in wallets]))
 
 
+@ecached('get_user_wallet_balance_usd_{user}_{symbol}', 300)
 def get_user_wallet_balance_usd(user, symbol):
     wallet_model = get_wallet_model(symbol)
     rate = wallet_model.get_rate()
@@ -65,8 +76,30 @@ def get_user_wallet_balance_usd(user, symbol):
     return round((balance * rate), 3)
 
 
+@ecached('get_user_total_balance_usd_{user}', 300)
 def get_user_total_balance_usd(user):
     balance = 0
     for symbol in ['btc', 'ltc', 'dash', 'doge', 'bcy']:
         balance += float(get_user_wallet_balance_usd(user, symbol))
     return round(balance, 3)
+
+
+@ecached('get_aggregate_invoices_{user}', 3600)
+def get_aggregate_invoices(user):
+    payments_ids = []
+    for symbol in ['btc', 'ltc', 'dash', 'doge', 'bcy']:
+        wallet = get_wallet_model(symbol)
+        if wallet:
+            wallets = wallet.objects.filter(user=user)
+            q = list(chain(*[
+                w.payments.values_list('id', flat=True) for w in wallets
+            ]))
+            if q:
+                payments_ids.extend(q)
+    payments = Payment.objects.filter(
+        id__in=payments_ids).only('modified', 'amount').order_by('modified')
+    aggregate_payments = {
+        k: round(sum(float(x.usd_amount) for x in g), 2)
+        for k, g in groupby(payments, key=lambda i: i.modified.strftime('%d.%m.%Y'))
+    }
+    return aggregate_payments
