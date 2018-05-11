@@ -11,9 +11,8 @@ from easy_cache import ecached
 from django.urls import reverse
 
 
-env = environ.Env()
+env = environ.Path()
 logger = logging.getLogger(__name__)
-CONFIRMATIONS = env('CONFIRMATIONS', default=6)
 
 
 def get_api_key():
@@ -208,7 +207,7 @@ class GetWebhook(object):
 
 class CheckTransactionConfirmations(GetWebhook):
     """docstring for CheckTransactionConfirmations"""
-    def __init__(self, signal, confirmations=CONFIRMATIONS):
+    def __init__(self, signal, confirmations=6):
         super(CheckTransactionConfirmations, self).__init__(signal)
         self.confirmations = confirmations
         self.confirmed = False

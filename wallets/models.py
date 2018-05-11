@@ -28,7 +28,7 @@ from .utils import get_expires_date, from_satoshi, get_api_key
 from . import api
 
 
-env = environ.Env()
+env = environ.Path()
 logger = logging.getLogger(__name__)
 
 
@@ -450,7 +450,6 @@ class Invoice(TimeStampedModel, SoftDeletableModel):
             self.tx_ref,
             self.wallet.coin_symbol
         )
-
         if self.amount < details['outputs'][0]['value']:
             logger.error(
                 'Invoice can be confirmed, because the amount of all ' +

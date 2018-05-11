@@ -80,7 +80,7 @@ class TestGetUserTotalBalanceUsd(TestCase):
         )
         self.assertTrue(
             queries.get_user_total_balance_usd(self.user) >
-            400
+            300
         )
 
 
@@ -103,8 +103,8 @@ class TestGetUserWalletBalanceUsd(TestCase):
         }
         )
         self.assertTrue(
-            queries.get_user_wallet_balance_usd(self.user, 'btc')>
-            400
+            queries.get_user_wallet_balance_usd(self.user, 'btc') >
+            300
         )
 
 

@@ -2,6 +2,9 @@ from itertools import chain, groupby
 
 from easy_cache import ecached
 
+from datetime import timedelta
+from django.utils import timezone
+
 from .utils import get_wallet_model, from_satoshi
 from .models import Payment
 
@@ -97,9 +100,13 @@ def get_aggregate_invoices(user):
             if q:
                 payments_ids.extend(q)
     payments = Payment.objects.filter(
-        id__in=payments_ids).only('modified', 'amount').order_by('modified')
+        id__in=payments_ids,
+        created=timezone.now()-timedelta(days=7)
+        ).only('modified', 'amount').order_by('modified')
     aggregate_payments = {
         k: round(sum(float(x.usd_amount) for x in g), 2)
-        for k, g in groupby(payments, key=lambda i: i.modified.strftime('%d.%m.%Y'))
+        for k, g in groupby(
+            payments, key=lambda i: i.modified.strftime('%d.%m.%Y')
+        )
     }
     return aggregate_payments

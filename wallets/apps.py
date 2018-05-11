@@ -2,7 +2,7 @@ from django.apps import AppConfig
 import environ
 
 
-env = environ.Env()
+env = environ.Path()
 
 
 class WalletsConfig(AppConfig):

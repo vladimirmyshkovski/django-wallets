@@ -10,6 +10,7 @@ from django.views.generic.edit import FormMixin
 from django.views.decorators.csrf import csrf_exempt
 from django.views.generic import (DetailView, ListView, RedirectView,
                                   View, TemplateView, DeleteView)
+from django.shortcuts import get_object_or_404
 
 from .utils import (decode_signin, extract_webhook_id,
                     unsubscribe_from_webhook,
@@ -229,10 +230,10 @@ class InvoiceDetailView(LoginRequiredMixin, PermissionRequiredMixin,
     permission_required = ['wallets.view_invoice']
     raise_exception = True
 
-    def get_context_data(self, **kwargs):
-        context = super(InvoiceDetailView, self).get_context_data(**kwargs)
-        return context
-
+    #def get_context_data(self, **kwargs):
+    #    context = super(InvoiceDetailView, self).get_context_data(**kwargs)
+    #    return context
+    """
     def post(self, *args, **kwargs):
         self.object = self.get_object()
 
@@ -273,6 +274,60 @@ class InvoiceDetailView(LoginRequiredMixin, PermissionRequiredMixin,
             'wallets:invoice_detail',
             kwargs={'pk': self.object.pk}
         )
+    """
+
+
+class InvoicePayView(LoginRequiredMixin, PermissionRequiredMixin,
+                     DetailView):
+
+    model = Invoice
+    permission_required = [
+        'wallets.view_invoice',
+        'wallets.pay_invoice'
+    ]
+    raise_exception = True
+    template_name = 'wallets/invoice_confirm_pay.html'
+
+    def post(self, request, *args, **kwargs):
+        self.object = self.get_object()
+        if self.request.user.has_perm('pay_invoice', self.object):
+            balance = to_satoshi(float(self.object.wallet.balance))
+
+            if self.object.is_expired:
+                if _messages:
+                    messages.error(self.request, _('Invoice expired'))
+
+            if balance >= self.object.amount:
+                try:
+                    self.object.pay()
+                    if _messages:
+                        messages.success(
+                            self.request,
+                            _('''The account was successfully sent.
+                                 Wait for transaction {}
+                                confirmation.'''.format(self.object.tx_ref))
+                        )
+                except:
+                    if _messages:
+                        messages.error(
+                            self.request,
+                            _('Something went wrong. Try again later')
+                        )
+            else:
+                if _messages:
+                    messages.error(
+                        self.request,
+                        _('''You do not have enough funds
+                             to pay your invoice.''')
+                    )
+
+        return redirect(self.get_success_url())
+
+    def get_success_url(self):
+        return reverse(
+            'wallets:invoice_detail',
+            kwargs={'pk': self.object.pk}
+        )
 
 
 class InvoiceDeleteView(LoginRequiredMixin, PermissionRequiredMixin,
@@ -281,6 +336,12 @@ class InvoiceDeleteView(LoginRequiredMixin, PermissionRequiredMixin,
     model = Invoice
     permission_required = ['wallets.pay_invoice']
     raise_exception = True
+
+    def get_success_url(self):
+        return reverse(
+            'wallets:invoice_list',
+            kwargs={'wallet': self.object.wallet.coin_symbol}
+        )
 
 
 class PaymentListView(LoginRequiredMixin, ListView):

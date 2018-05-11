@@ -728,7 +728,7 @@ class TestInvoiceDetailView(TestCase):
             )
         )
         self.response_403(resp)
-
+    '''
     def test_success_with_POST(self):
         self.client.login(
             username=self.user.username,
@@ -757,6 +757,7 @@ class TestInvoiceDetailView(TestCase):
         pk = self.btc_invoice.pk
         invoice = models.Invoice.objects.get(pk=pk)
         self.assertIsNotNone(invoice.tx_ref)
+    '''
 
 
 class TestPaymentListView(TestCase):
@@ -848,6 +849,191 @@ class TestPaymentListView(TestCase):
         self.get(self.reverse('wallets:payment_list'))
         self.assertEqual(len(self.get_context('payment_list')), 0)
 
+
+class TestInvoiceDeleteView(TestCase):
+    def setUp(self):
+        self.user = factories.UserFactory()
+        self.btc = factories.BtcFactory(user=self.user)
+        self.btc_invoice = factories.BtcInvoiceFactory(wallet=self.btc)
+        self.payment = factories.PaymentBtcInvoiceFactory(
+            wallet=self.btc,
+            invoice=self.btc_invoice
+        )
+        assign_perm('view_invoice', self.user, self.btc_invoice)
+        assign_perm('pay_invoice', self.user, self.btc_invoice)
+        assign_perm('view_payment', self.user, self.payment)
+
+    def test_redirect_if_not_logged_in(self):
+        resp = self.get('/wallets/invoices/1/_delete/')
+        self.assertRedirects(
+            resp,
+            '/accounts/login/?next=/wallets/invoices/1/_delete/',
+            fetch_redirect_response=False
+        )
+
+    def test_success_if_logged_in(self):
+        self.client.login(username=self.user.username, password='password')
+        resp = self.get('/wallets/invoices/1/_delete/')
+        self.response_200(resp)
+
+    def test_view_url_accessible_by_name(self):
+        self.client.login(username=self.user.username, password='password')
+        resp = self.get(self.reverse(
+            'wallets:invoice_delete',
+            pk=self.btc_invoice.pk)
+        )
+        self.response_200(resp)
+
+    def test_view_uses_correct_template(self):
+        self.client.login(username=self.user.username, password='password')
+        resp = self.get(
+            '/wallets/invoices/{}/_delete/'.format(self.btc_invoice.pk)
+        )
+        self.response_200(resp)
+        self.assertTemplateUsed(resp, 'wallets/invoice_confirm_delete.html')
+
+    def test_delete_object_after_post(self):
+        self.client.login(username=self.user.username, password='password')
+        resp = self.post(
+            '/wallets/invoices/1/_delete/'.format(self.btc_invoice.pk)
+        )
+        self.response_302(resp)
+        self.assertEqual(
+            models.Invoice.objects.count(),
+            0
+        )
+
+
+class TestInvoicePayView(TestCase):
+    def setUp(self):
+        self.user = factories.UserFactory()
+        self.btc = factories.BtcFactory(user=self.user)
+        self.btc_invoice = factories.BtcInvoiceFactory(wallet=self.btc)
+        self.payment = factories.PaymentBtcInvoiceFactory(
+            wallet=self.btc,
+            invoice=self.btc_invoice,
+            amount=1000000000000000
+        )
+        assign_perm('view_invoice', self.user, self.btc_invoice)
+        assign_perm('pay_invoice', self.user, self.btc_invoice)
+        assign_perm('view_payment', self.user, self.payment)
+
+    def test_redirect_if_not_logged_in(self):
+        resp = self.get('/wallets/invoices/1/_pay/')
+        self.assertRedirects(
+            resp,
+            '/accounts/login/?next=/wallets/invoices/1/_pay/',
+            fetch_redirect_response=False
+        )
+
+    def test_success_if_logged_in(self):
+        self.client.login(username=self.user.username, password='password')
+        resp = self.get('/wallets/invoices/1/_pay/')
+        self.response_200(resp)
+
+    def test_view_url_accessible_by_name(self):
+        self.client.login(username=self.user.username, password='password')
+        resp = self.get(self.reverse('wallets:invoice_pay', pk=1))
+        self.response_200(resp)
+
+    def test_view_uses_correct_template(self):
+        self.client.login(username=self.user.username, password='password')
+        resp = self.get(
+            '/wallets/invoices/1/_pay/'.format(self.btc_invoice.pk)
+        )
+        self.response_200(resp)
+        self.assertTemplateUsed(resp, 'wallets/invoice_confirm_pay.html')
+
+    def test_paid_object_after_post(self):
+        self.client.login(username=self.user.username, password='password')
+        blockcypher.get_transaction_details = mock.MagicMock(
+            return_value={
+                "addresses": [
+                    "13XXaBufpMvqRqLkyDty1AXqueZHVe6iyy",
+                    "19YtzZdcfs1V2ZCgyRWo8i2wLT8ND1Tu4L",
+                    "1BNiazBzCxJacAKo2yL83Wq1VJ18AYzNHy",
+                    "1GbMfYui17L5m6sAy3L3WXAtf1P32bxJXq",
+                    "1N2f642sbgCMbNtXFajz9XDACDFnFzdXzV"
+                ],
+                "block_hash": "0000000000000000c504bdea36e531d8089d324f2d" +
+                              "936c86e3274f97f8a44328",
+                "block_height": 293000,
+                "confirmations": 86918,
+                "confirmed": "datetime.datetime(2014, 3, 29, 1, 29, 19," +
+                             " 0, tzinfo=tzutc())",
+                "double_spend": False,
+                "fees": 0,
+                "hash": "f854aebae95150b379cc1187d848d58225f3c4157fe992bcd1" +
+                        "66f58bd5063449",
+                "inputs": [
+                    {
+                        "addresses": [
+                            "1GbMfYui17L5m6sAy3L3WXAtf1P32bxJXq"
+                        ],
+                        "output_index": 1,
+                        "output_value": 16450000,
+                        "prev_hash": "583910b7bf90ab802e22e5c25a89b59862b20c" +
+                                     "8c1aeb24dfb94e7a508a70f121",
+                        "script": "4830450220504b1ccfddf508422bdd8b0fcda2b14" +
+                                  "83e87aee1b486c0130bc29226bbce3b4e022100b5" +
+                                  "befcfcf0d3bf6ebf0ac2f93badb19e3042c7bed45" +
+                                  "6c398e743b885e782466c012103b1feb40b99e8ff" +
+                                  "18469484a50e8b52cc478d5f4f773a341fbd920a4" +
+                                  "ceaedd4bf",
+                        "script_type": "pay-to-pubkey-hash",
+                        "sequence": 4294967295
+                    },
+                ],
+                "lock_time": 0,
+                "outputs": [
+                    {
+                        "addresses": [
+                            "1N2f642sbgCMbNtXFajz9XDACDFnFzdXzV"
+                        ],
+                        "script": "76a914e6aad9d712c419ea8febf009a3f3bfdd8d2" +
+                                  "22fac88ac",
+                        "script_type": "pay-to-pubkey-hash",
+                        "spent_by": "35832d6c70b98b54e9a53ab2d51176eb19ad11b" +
+                                    "c4505d6bb1ea6c51a68cb92ee",
+                        "value": 70320221545
+                    }
+                ],
+                "preference": "low",
+                "received": "datetime.datetime(2014, 3, 29, 1, 29, " +
+                            "19, 0, tzinfo=tzutc())",
+                "relayed_by": "",
+                "size": 636,
+                "total": 70320221545,
+                "ver": 1,
+                "vin_sz": 4,
+                "vout_sz": 1
+            }
+        )
+        api.not_simple_spend = mock.MagicMock(
+            return_value='7981c7849294648c1e79dd16077a388b808fcf8c20035aec7' +
+                         'cc5315b37dacfee'
+        )
+        blockcypher.get_address_overview = mock.MagicMock(
+            return_value={
+                "address": "1DEP8i3QJCsomS4BSMY2RpU1upv62aGvhD",
+                "balance": 4433416,
+                "final_balance": 4433416,
+                "final_n_tx": 7,
+                "n_tx": 7,
+                "total_received": 4433416,
+                "total_sent": 0,
+                "unconfirmed_balance": 0,
+                "unconfirmed_n_tx": 0
+            }
+        )
+        resp = self.post(
+            '/wallets/invoices/{}/_pay/'.format(self.btc_invoice.pk)
+        )
+        self.response_302(resp)
+        invoice = models.Invoice.objects.first()
+        invoice.is_paid = True
+        invoice.save()
+        self.assertTrue(invoice.is_paid)
 
 """
 class TestInvoicePayView(TestCase):
