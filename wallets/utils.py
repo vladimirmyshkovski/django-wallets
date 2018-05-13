@@ -11,7 +11,7 @@ from easy_cache import ecached
 from django.urls import reverse
 
 
-env = environ.Path()
+env = environ.Env()
 logger = logging.getLogger(__name__)
 
 
