@@ -45,24 +45,26 @@ class ApiKey(TimeStampedModel, SoftDeletableModel):
 
     @ecached_property('is_expire:{self.id}', 60)
     def is_expire(self):
-        info = blockcypher.get_token_info(self.api_key)
-        limits = info.get('limits', None)
-        hits_history = info.get('hits_history', None)
-        if not limits:
-            return True
-        if not hits_history:
-            return False
-        else:
-            current_api_hour = sum([
-                i['api/hour'] for i in hits_history if 'api/hour' in i
-            ])
-            current_hooks_hour = sum([
-                i['hooks/hour'] for i in hits_history if 'hooks/hour' in i
-            ])
-            if current_api_hour < limits['api/hour'] and \
-               current_hooks_hour < limits['hooks/hour']:
+        try:
+            info = blockcypher.get_token_info(self.api_key)
+            limits = info.get('limits', None)
+            hits_history = info.get('hits_history', None)
+            if not limits:
+                return True
+            if not hits_history:
                 return False
-        return True
+            else:
+                current_api_hour = sum([
+                    i['api/hour'] for i in hits_history if 'api/hour' in i
+                ])
+                current_hooks_hour = sum([
+                    i['hooks/hour'] for i in hits_history if 'hooks/hour' in i
+                ])
+                if current_api_hour < limits['api/hour'] and \
+                   current_hooks_hour < limits['hooks/hour']:
+                    return False
+        except:
+            return True
 
     def __str__(self):
         return self.api_key
