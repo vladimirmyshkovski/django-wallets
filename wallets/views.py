@@ -168,6 +168,8 @@ class WalletsWebhookView(View):
             signature = kwargs['signature']
             sign = decode_signin(signature)
             validate_signin(sign)
+            from pprint import pprint
+            pprint(sign)
             get_webhook.send(
                 sender=None,
                 from_address=sign['from_address'],
