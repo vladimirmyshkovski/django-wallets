@@ -156,3 +156,5 @@ AUTHENTICATION_BACKENDS = [
     'guardian.backends.ObjectPermissionBackend'
 ]
 GUARDIAN_RAISE_403 = True
+
+DJANGO_WALLETS_DEFAULT_CONFIRMATIONS = 6

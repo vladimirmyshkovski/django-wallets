@@ -137,7 +137,7 @@ class BaseWallet(TimeStampedModel, SoftDeletableModel):
     def spend_with_webhook(self, addresses: List[str], amounts: List[int],
                            invoice: object=None, obj: object=None,
                            event: str='tx-confirmation') -> str:
-
+        print('invoice in spend', invoice)
         assert len(addresses) == len(amounts), (
             'The number of addresses and amounts should be the same'
         )
@@ -171,6 +171,9 @@ class BaseWallet(TimeStampedModel, SoftDeletableModel):
                 })
             except Exception:
                 obj = None
+
+        print(invoice.id if invoice else None)
+
         signature = signing.dumps({
             'from_address': self.address,
             'to_addresses': to_addresses,
@@ -418,6 +421,7 @@ class Invoice(TimeStampedModel, SoftDeletableModel):
         return round((self.normal_amount * self.wallet.get_rate()), 2)
 
     def pay(self):
+        print('self.invoice.id in PAY', self.id)
         if self.wallet.user.has_perm('pay_invoice', self):
             payments = self.payments.all()
             data = [

@@ -45,24 +45,26 @@ class ApiKey(TimeStampedModel, SoftDeletableModel):
 
     @ecached_property('is_expire:{self.id}', 60)
     def is_expire(self):
-        info = blockcypher.get_token_info(self.api_key)
-        limits = info.get('limits', None)
-        hits_history = info.get('hits_history', None)
-        if not limits:
-            return True
-        if not hits_history:
-            return False
-        else:
-            current_api_hour = sum([
-                i['api/hour'] for i in hits_history if 'api/hour' in i
-            ])
-            current_hooks_hour = sum([
-                i['hooks/hour'] for i in hits_history if 'hooks/hour' in i
-            ])
-            if current_api_hour < limits['api/hour'] and \
-               current_hooks_hour < limits['hooks/hour']:
+        try:
+            info = blockcypher.get_token_info(self.api_key)
+            limits = info.get('limits', None)
+            hits_history = info.get('hits_history', None)
+            if not limits:
+                return True
+            if not hits_history:
                 return False
-        return True
+            else:
+                current_api_hour = sum([
+                    i['api/hour'] for i in hits_history if 'api/hour' in i
+                ])
+                current_hooks_hour = sum([
+                    i['hooks/hour'] for i in hits_history if 'hooks/hour' in i
+                ])
+                if current_api_hour < limits['api/hour'] and \
+                   current_hooks_hour < limits['hooks/hour']:
+                    return False
+        except:
+            return True
 
     def __str__(self):
         return self.api_key
@@ -135,7 +137,7 @@ class BaseWallet(TimeStampedModel, SoftDeletableModel):
     def spend_with_webhook(self, addresses: List[str], amounts: List[int],
                            invoice: object=None, obj: object=None,
                            event: str='tx-confirmation') -> str:
-
+        print('invoice in spend', invoice)
         assert len(addresses) == len(amounts), (
             'The number of addresses and amounts should be the same'
         )
@@ -159,7 +161,6 @@ class BaseWallet(TimeStampedModel, SoftDeletableModel):
     def set_webhook(self, to_addresses: List[str], transaction: str,
                     obj: object=None, invoice: object=None,
                     event: str='tx-confirmation') -> str:
-
         domain = env('DOMAIN_NAME', default='localhost')
         if obj:
             try:
@@ -170,6 +171,9 @@ class BaseWallet(TimeStampedModel, SoftDeletableModel):
                 })
             except Exception:
                 obj = None
+
+        print(invoice.id if invoice else None)
+
         signature = signing.dumps({
             'from_address': self.address,
             'to_addresses': to_addresses,
@@ -417,6 +421,7 @@ class Invoice(TimeStampedModel, SoftDeletableModel):
         return round((self.normal_amount * self.wallet.get_rate()), 2)
 
     def pay(self):
+        print('self.invoice.id in PAY', self.id)
         if self.wallet.user.has_perm('pay_invoice', self):
             payments = self.payments.all()
             data = [
