@@ -19,26 +19,3 @@ def generate_new_address(user, coin_symbol):
         return obj
     else:
         return None
-
-'''
-def get_wallet_invoices(invoices, wallets, symbol):
-    received_invoices = []
-    sended_invoices = []
-    for wallet in wallets:
-        for invoice in wallet.invoice_set.all():
-            received_invoices.append(invoice)
-        for invoice in wallet.sended_invoices.all():
-            sended_invoices.append(invoice)
-
-    #for invoice in invoices:
-    #    for wallet in wallets:
-    #        if invoice.receiver_wallet_object == wallet:
-    #            received_invoices.append(invoice)
-    #        elif invoice.sender_wallet_object == wallet:
-    #            sended_invoices.append(invoice)
-    result = {
-        '{}_received_invoices'.format(symbol): received_invoices,
-        '{}_sended_invoices'.format(symbol): sended_invoices
-    }
-    return result
-'''

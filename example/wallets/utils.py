@@ -9,9 +9,7 @@ from datetime import timedelta
 from django.utils import timezone
 from easy_cache import ecached
 from django.urls import reverse
-#from django.conf import settings
-#from functools import lru_cache
-#api_key = settings.BLOCKCYPHER_API_KEY
+
 
 env = environ.Env()
 logger = logging.getLogger(__name__)
@@ -19,8 +17,6 @@ logger = logging.getLogger(__name__)
 
 def get_api_key():
     from .models import ApiKey
-    api_key = env('DEFAULT_BLOCKCYPHER_API_KEY')
-    ApiKey.objects.get_or_create(api_key=api_key)
     return ApiKey.live.first()
 
 
@@ -38,7 +34,6 @@ def to_satoshi(amount):
             return int(amount * 100000000)
         except:
             raise ValueError('Can not convert string to float')
-
     else:
         raise ValueError('Amount must be float')
 
@@ -56,13 +51,10 @@ def from_satoshi(amount):
         raise ValueError('Amount must be integer')
 
 
-def set_webhook(from_address, to_address, transaction_id, coin_symbol,
-                payload=None, event='confirmed-tx'):
+def set_webhook(from_address, to_address, transaction_id,
+                coin_symbol, event='tx-confirmation'):
 
     domain = env('DOMAIN_NAME')
-
-    if payload:
-        payload = signing.dumps(payload)
 
     signature = signing.dumps({
         'from_address': from_address,
@@ -70,7 +62,6 @@ def set_webhook(from_address, to_address, transaction_id, coin_symbol,
         'symbol': coin_symbol,
         'event': event,
         'transaction_id': transaction_id,
-        'payload': payload
         })
 
     callback_url = 'https://{}{}'.format(
@@ -81,10 +72,6 @@ def set_webhook(from_address, to_address, transaction_id, coin_symbol,
         )
 
     webhook = blockcypher.subscribe_to_address_webhook(
-        #callback_url='https://{}/wallets/webhook/{}/'.format(
-        #    domain,
-        #    signature
-        #),
         callback_url=callback_url,
         subscription_address=from_address,
         event=event,
@@ -109,7 +96,7 @@ def decode_signin(signature, max_age=60*60*24*30):
 
 def validate_signin(data):
     key_list = ['from_address', 'to_addresses', 'symbol', 'event',
-                'transaction_id']
+                'transaction_id', 'invoice_id', 'content_type']
     symbol_list = ['bcy', 'btc', 'ltc', 'dash', 'doge']
     event_list = ['tx-confidence', 'double-spend-tx', 'tx-confirmation',
                   'confirmed-tx', 'new-block', 'unconfirmed-tx']
@@ -123,50 +110,41 @@ def extract_webhook_id(signature, coin_symbol):
     api_keys = get_all_api_keys()
     for api_key in api_keys:
         webhook_id = None
+        can_unsubscribe = False
         webhooks = blockcypher.list_webhooks(api_key, coin_symbol=coin_symbol)
         for webhook in webhooks:
             if webhook['url'].endswith(signature + '/'):
                 webhook_id = webhook['id']
-                return webhook_id
-        return {
-            'api_key': api_key,
-            'webhook_id': webhook_id
-        }
+                webhook_confirmations = webhook.get('confirmations', None)
+                if webhook_confirmations:
+                    if webhook['confirmations'] >= CONFIRMATIONS:
+                        can_unsubscribe = True
+                return {
+                    'api_key': api_key,
+                    'webhook_id': webhook_id,
+                    'can_unsubscribe': can_unsubscribe
+                }
 
 
-def unsubscribe_from_webhook(api_key, webhook_id, coin_symbol):
-    unsubscribe = blockcypher.unsubscribe_from_webhook(
-        api_key,
-        webhook_id,
-        coin_symbol=coin_symbol
-    )
+def unsubscribe_from_webhook(api_key, webhook_id,
+                             can_unsubscribe, coin_symbol):
+    if can_unsubscribe:
+        unsubscribe = blockcypher.unsubscribe_from_webhook(
+            api_key,
+            webhook_id,
+            coin_symbol=coin_symbol
+        )
     return unsubscribe
 
 
 def get_wallet_model(symbol):
+    model = None
     from .models import Btc, Ltc, Doge, Dash, Bcy
     data = {
         'btc': Btc, 'ltc': Ltc, 'dash': Dash, 'doge': Doge, 'bcy': Bcy
     }
     if symbol in data:
         model = data[symbol]
-    else:
-        model = None
-
-    '''
-    if symbol == 'btc':
-        model = Btc
-    elif symbol == 'ltc':
-        model = Ltc
-    elif symbol == 'dash':
-        model = Dash
-    elif symbol == 'doge':
-        model = Doge
-    elif symbol == 'bcy':
-        model = Bcy
-    else:
-        model = None
-    '''
     return model
 
 
@@ -189,43 +167,42 @@ class GetWebhook(object):
     def parse_signal(self):
         key_list = [
             'from_address', 'to_addresses', 'symbol',
-            'event', 'transaction_id', 'payload'
+            'event', 'transaction_id'
         ]
-        if all(key in self.signal for key in key_list):
-            for item in key_list:
-                setattr(self, item, self.signal[item])
-
-        '''
-        if 'from_address' in self.signal:
-            self.from_address = self.signal['from_address']
-        if 'to_addresses' in self.signal:
-            self.to_addresses = self.signal['to_addresses']
-        if 'symbol' in self.signal:
-            self.symbol = self.signal['symbol']
-        if 'event' in self.signal:
-            self.event = self.signal['event']
-        if 'transaction_id' in self.signal:
-            self.transaction_id = self.signal['transaction_id']
-        if 'payload' in self.signal:
-            self.paylaod = self.signal['payload']
-        '''
+        assert all(key in self.signal for key in key_list), (
+            'The data in the received signal is not enough'
+        )
+        for item in key_list:
+            setattr(self, item, self.signal[item])
 
     def get_object(self):
-        if self.symbol:
-            wallet_content_type = ContentType.objects.get(
-                app_label='wallets',
-                model=self.symbol.lower()
-            )
-            sender_wallet = wallet_content_type.get_object_for_this_type(
+        symbols = ['btc', 'ltc', 'dash', 'doge', 'bcy']
+        assert self.symbol in symbols, (
+            'Received unsupported coin symbol ({})'.format(self.symbol)
+        )
+
+        content_type = ContentType.objects.get(
+            app_label='wallets',
+            model=self.symbol.lower()
+        )
+        try:
+            sender_wallet = content_type.get_object_for_this_type(
                 address=self.from_address
             )
             self.sender_wallet = sender_wallet
 
-            for address in self.to_addresses:
-                receiver_wallet = wallet_content_type.get_object_for_this_type(
+        except Exception as e:
+            logger.exception(e)
+            self.sender_wallet = None
+
+        for address in self.to_addresses:
+            try:
+                receiver_wallet = content_type.get_object_for_this_type(
                     address=address
                 )
                 self.receiver_wallets.append(receiver_wallet)
+            except Exception as e:
+                logger.exception(e)
 
 
 class CheckTransactionConfirmations(GetWebhook):
@@ -275,13 +252,21 @@ class Converter(object):
         }
 
     def validate(self):
-        assert self.currency_to != self.currency_from, '''
-        It is not possible to convert {} to {}'''.format(self.currency_to,
-                                                         self.currency_from)
-        assert self.currency_to in self.currencies, '''
-        The converter is not provided for {}'''.format(self.currency_to)
-        assert self.currency_from in self.currencies, '''
-        The converter is not provided for {}'''.format(self.currency_from)
+        assert self.currency_to != self.currency_from, (
+            'It is not possible to convert {} to {}'.format(
+                self.currency_to, self.currency_from
+            )
+        )
+        assert self.currency_to in self.currencies, (
+            'The converter is not provided for {}'.format(
+                self.currency_to
+            )
+        )
+        assert self.currency_from in self.currencies, (
+            'The converter is not provided for {}'.format(
+                self.currency_from
+            )
+        )
 
     @ecached('convert', 60)
     def convert(self):
@@ -290,13 +275,17 @@ class Converter(object):
 
         from_response = requests.get(
             'https://api.coinmarketcap.com/v1/ticker/{}/'.format(
-                currency_from)
+                currency_from
             )
+        )
         from_json_response = from_response.json()
         from_price_usd = from_json_response[0]['price_usd']
 
         to_response = requests.get(
-            'https://api.coinmarketcap.com/v1/ticker/{}/'.format(currency_to))
+            'https://api.coinmarketcap.com/v1/ticker/{}/'.format(
+                currency_to
+            )
+        )
         to_json_response = to_response.json()
         to_price_usd = to_json_response[0]['price_usd']
 

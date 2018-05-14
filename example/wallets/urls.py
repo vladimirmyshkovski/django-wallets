@@ -3,11 +3,6 @@ from . import views
 
 app_name = 'wallets'
 urlpatterns = [
-    #re_path(
-    #    r'autocomplete/',
-    #    view=views.WalletsAutocompleteView.as_view(),
-    #    name='autocomplete'
-    #),
     re_path(
         r'^$',
         view=views.AllUserWalletsList.as_view(),
@@ -19,24 +14,29 @@ urlpatterns = [
         name='webhook'
     ),
     re_path(
-        r'^invoices/(?P<wallet>[\w.@+-]+)/$',
-        view=views.InvoiceListView.as_view(),
-        name='invoice_list'
+        r'^payments/$',
+        view=views.PaymentListView.as_view(),
+        name='payment_list'
     ),
     re_path(
         r'^invoices/(?P<pk>\d+)/_detail/$',
         view=views.InvoiceDetailView.as_view(),
         name='invoice_detail'
     ),
-    #re_path(
-    #    r'^invoices/(?P<pk>\d+)/_pay/$',
-    #    view=views.InvoicePayView.as_view(),
-    #    name='invoice_pay'
-    #),
+    re_path(
+        r'^invoices/(?P<pk>\d+)/_pay/$',
+        view=views.InvoicePayView.as_view(),
+        name='invoice_pay'
+    ),
     re_path(
         r'^invoices/(?P<pk>\d+)/_delete/$',
         view=views.InvoiceDeleteView.as_view(),
         name='invoice_delete'
+    ),
+    re_path(
+        r'^invoices/(?P<wallet>[\w.@+-]+)/$',
+        view=views.InvoiceListView.as_view(),
+        name='invoice_list'
     ),
     re_path(
         r'^(?P<wallet>[\w.@+-]+)/$',
@@ -53,9 +53,4 @@ urlpatterns = [
         view=views.WalletsDetailView.as_view(),
         name='detail'
     ),
-    #re_path(
-    #    r'^(?P<wallet>[\w.@+-]+)/(?P<address>[\w.@+-]+)/_withdraw/$',
-    #    view=views.WalletsWithdrawView.as_view(),
-    #    name='withdraw'
-    #),
 ]

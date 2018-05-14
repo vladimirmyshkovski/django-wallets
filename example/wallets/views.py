@@ -1,24 +1,29 @@
+from guardian.mixins import PermissionRequiredMixin, LoginRequiredMixin
+
 from django.conf import settings
 from django.utils.decorators import method_decorator
 from django.utils.translation import ugettext_lazy as _
 from django.http import JsonResponse, Http404
-from django.urls import reverse  # , reverse_lazy
+from django.urls import reverse
 from django.shortcuts import redirect
-from guardian.mixins import PermissionRequiredMixin, LoginRequiredMixin
-from django.views.generic import (DetailView, ListView, RedirectView,
-                                  View, TemplateView, DeleteView)
 from django.views.generic.edit import FormMixin
 from django.views.decorators.csrf import csrf_exempt
-#from django.shortcuts import get_object_or_404
+from django.views.generic import (DetailView, ListView, RedirectView,
+                                  View, TemplateView, DeleteView)
+from django.shortcuts import get_object_or_404
+
 from .utils import (decode_signin, extract_webhook_id,
                     unsubscribe_from_webhook,
-                    validate_signin, to_satoshi)
+                    validate_signin, to_satoshi,
+                    get_wallet_model)
 from .signals import get_webhook
 from .mixins import OwnerPermissionsMixin, CheckWalletMixin
-from .models import Invoice
-from .forms import WithdrawForm  # , PayForm
+from .models import Invoice, Payment
+from .forms import WithdrawForm
 from .services import generate_new_address
-from .queries import get_payments, get_invoices
+from .queries import (get_payments, get_invoices,
+                      get_user_wallet_balance,
+                      get_user_wallet_balance_usd)
 
 try:
     _messages = 'django.contrib.messages' in settings.INSTALLED_APPS
@@ -40,10 +45,7 @@ class AllUserWalletsList(LoginRequiredMixin, TemplateView):
 
     def get_context_data(self, **kwargs):
         context = super(AllUserWalletsList, self).get_context_data(**kwargs)
-        context['btc_wallets'] = self.request.user.btc_wallets.all()
-        context['ltc_wallets'] = self.request.user.ltc_wallets.all()
-        context['dash_wallets'] = self.request.user.dash_wallets.all()
-        context['doge_wallets'] = self.request.user.doge_wallets.all()
+        context['symbols'] = ['btc', 'ltc', 'dash', 'doge']
         return context
 
 
@@ -88,11 +90,15 @@ class WalletsListView(BaseWalletMixin, ListView):
 
     def get_context_data(self, **kwargs):
         context = super(WalletsListView, self).get_context_data(**kwargs)
-        balance = 0
-        for address in self.get_queryset():
-            balance += address.balance
-        context['total_balance'] = balance
-        context['symbol'] = self.wallet.get_coin_symbol()
+        context['total_balance'] = get_user_wallet_balance(
+            user=self.request.user,
+            symbol=self.kwargs['wallet']
+        )
+        context['total_balance_usd'] = get_user_wallet_balance_usd(
+            user=self.request.user,
+            symbol=self.kwargs['wallet']
+        )
+        context['symbol'] = self.kwargs['wallet']
         return context
 
     def dispatch(self, request, *args, **kwargs):
@@ -169,14 +175,18 @@ class WalletsWebhookView(View):
                 symbol=sign['symbol'],
                 event=sign['event'],
                 transaction_id=sign['transaction_id'],
-                payload=sign['payload']
+                invoice_id=sign['invoice_id'],
+                content_object=sign['content_object']
             )
             data = extract_webhook_id(signature, sign['symbol'])
             if data:
                 unsubscribe_from_webhook(
-                    data['api_key'], data['webhook_id'], sign['symbol']
+                    api_key=data['api_key'],
+                    webhook_id=data['webhook_id'],
+                    coin_symbol=sign['symbol'],
+                    can_unsubscribe=data['can_unsubscribe']
                 )
-        except:
+        except Exception:
             pass
         return JsonResponse({}, status=200)
 
@@ -202,44 +212,7 @@ class InvoiceListView(LoginRequiredMixin, CheckWalletMixin, TemplateView):
                 user=self.request.user,
                 symbol=self.symbol
             )
-        '''
-        symbols = ['btc', 'ltc', 'dash', 'doge', 'bcy']
-        context['symbols'] = symbols
-        for symbol in symbols:
-            wallet = get_wallet_model(symbol)
-            received_invoices = wallet.get_received_invoices(
-                user=self.request.user,
-                symbol=symbol
-            )
-            context['{}_received_invoices'.format(symbol)] = received_invoices
-            sended_invoices = wallet.get_sended_invoices(
-                user=self.request.user,
-                symbol=symbol
-            )
-            context['{}_sended_invoices'.format(symbol)] = sended_invoices
-            context['form'] = PayForm
-        '''
-        '''
-        wallets = wallet.objects.filter(user=self.request.user).all()
-        invoices_list = get_wallet_invoices(
-            invoices=Invoice.objects.all(),
-            wallets=wallets,
-            symbol=symbol
-        )
-        received_invoices = '{}_received_invoices'.format(symbol)
-        sended_invoices = '{}_sended_invoices'.format(symbol)
-        context[received_invoices] = invoices_list[received_invoices]
-        context[sended_invoices] = invoices_list[sended_invoices]
-        context['len_{}'.format(received_invoices)] = 0
-        context['len_{}'.format(sended_invoices)] = 0
-
-        for invoice in invoices_list[received_invoices]:
-            if not invoice.is_paid:
-                context['len_{}'.format(received_invoices)] += 1
-        for invoice in invoices_list[sended_invoices]:
-            if not invoice.is_paid:
-                context['len_{}'.format(sended_invoices)] += 1
-        '''
+            context['symbol'] = self.symbol
         return context
 
     def dispatch(self, request, *args, **kwargs):
@@ -256,56 +229,10 @@ class InvoiceDetailView(LoginRequiredMixin, PermissionRequiredMixin,
     model = Invoice
     permission_required = ['wallets.view_invoice']
     raise_exception = True
-    #form_class = PayForm
-    #initial = {'payload': ''}
 
-    '''
-    def get_form(self):
-        if self.request.POST:
-            return self.form_class(data=self.request.POST)
-        else:
-            return self.form_class
-    '''
-    def get_context_data(self, **kwargs):
-        context = super(InvoiceDetailView, self).get_context_data(**kwargs)
-        #context['form'] = self.get_form()
-        return context
-    """
-    def form_valid(self, form):
-        #self.payload = form.cleaned_data['payload']
-
-        if self.request.user.has_perm('pay_invoice', self.object):
-            balance = to_satoshi(float(self.object.wallet.balance))
-
-            if self.object.is_expired:
-                if _messages:
-                    messages.error(self.request, _('Invoice expired'))
-
-            if balance >= self.object.amount:
-                #payload = self.payload
-                try:
-                    self.object.pay()#payload)
-                    if _messages:
-                        messages.success(
-                            self.request,
-                            _('''The account was successfully sent.
-                                 Wait for transaction {}
-                                confirmation.'''.format(self.object.tx_ref))
-                        )
-                except:
-                    if _messages:
-                        messages.error(
-                            self.request,
-                            _('Something went wrong. Try again later')
-                        )
-            else:
-                if _messages:
-                    messages.error(
-                        self.request,
-                        _('''You do not have enough funds
-                             to pay your invoice.''')
-                    )
-        return super(InvoiceDetailView, self).form_valid(form)
+    #def get_context_data(self, **kwargs):
+    #    context = super(InvoiceDetailView, self).get_context_data(**kwargs)
+    #    return context
     """
     def post(self, *args, **kwargs):
         self.object = self.get_object()
@@ -318,9 +245,61 @@ class InvoiceDetailView(LoginRequiredMixin, PermissionRequiredMixin,
                     messages.error(self.request, _('Invoice expired'))
 
             if balance >= self.object.amount:
-                #payload = self.payload
                 try:
-                    self.object.pay()  # payload)
+                    self.object.pay()
+                    if _messages:
+                        messages.success(
+                            self.request,
+                            _('''The account was successfully sent.
+                                 Wait for transaction {}
+                                confirmation.'''.format(self.object.tx_ref))
+                        )
+                except:
+                    if _messages:
+                        messages.error(
+                            self.request,
+                            _('Something went wrong. Try again later')
+                        )
+            else:
+                if _messages:
+                    messages.error(
+                        self.request,
+                        _('''You do not have enough funds
+                             to pay your invoice.''')
+                    )
+        return redirect(self.get_success_url())
+
+    def get_success_url(self):
+        return reverse(
+            'wallets:invoice_detail',
+            kwargs={'pk': self.object.pk}
+        )
+    """
+
+
+class InvoicePayView(LoginRequiredMixin, PermissionRequiredMixin,
+                     DetailView):
+
+    model = Invoice
+    permission_required = [
+        'wallets.view_invoice',
+        'wallets.pay_invoice'
+    ]
+    raise_exception = True
+    template_name = 'wallets/invoice_confirm_pay.html'
+
+    def post(self, request, *args, **kwargs):
+        self.object = self.get_object()
+        if self.request.user.has_perm('pay_invoice', self.object):
+            balance = to_satoshi(float(self.object.wallet.balance))
+
+            if self.object.is_expired:
+                if _messages:
+                    messages.error(self.request, _('Invoice expired'))
+
+            if balance >= self.object.amount:
+                try:
+                    self.object.pay()
                     if _messages:
                         messages.success(
                             self.request,
@@ -342,11 +321,6 @@ class InvoiceDetailView(LoginRequiredMixin, PermissionRequiredMixin,
                              to pay your invoice.''')
                     )
 
-        #form = self.get_form()
-        #if form.is_valid():
-        #    return self.form_valid(form)
-        #else:
-        #    return self.form_invalid(form)
         return redirect(self.get_success_url())
 
     def get_success_url(self):
@@ -363,70 +337,29 @@ class InvoiceDeleteView(LoginRequiredMixin, PermissionRequiredMixin,
     permission_required = ['wallets.pay_invoice']
     raise_exception = True
 
-"""
-class InvoicePayView(LoginRequiredMixin,
-                     PermissionRequiredMixin,
-                     FormMixin, View):
+    def get_success_url(self):
+        return reverse(
+            'wallets:invoice_list',
+            kwargs={'wallet': self.object.wallet.coin_symbol}
+        )
 
-    model = Invoice
-    permission_required = ['wallets.pay_invoice']
-    raise_exception = True
-    form_class = PayForm
-    http_method_names = ['post']
 
-    #def get(self, *args, kwargs):
-    #    return super(InvoicePayView, self).get(*args, **kwargs)
+class PaymentListView(LoginRequiredMixin, ListView):
 
-    def get_form(self):
-        return self.form_class(data=self.request.POST)
+    model = Payment
+    paginate_by = 10
 
-    def form_valid(self, form):
-        self.payload = form.cleaned_data['payload']
-        return super(WalletsDetailView, self).form_valid(form)
-
-    def post(self, *args, **kwargs):
-        invoice = get_object_or_404(Invoice, pk=self.kwargs['pk'])
-        form = self.get_form()
-        if form.is_valid():
-            self.payload = form.cleaned_data['payload']
-
-            if self.request.user.has_perm('pay_invoice', invoice):
-                amounts_sum = sum(invoice.amount)
-                balance = to_satoshi(
-                    float(invoice.sender_wallet_object.balance)
-                )
-
-            if invoice.is_expired:
-                if _messages:
-                    messages.error(self.request, _('Invoice expired'))
-
-            if balance >= amounts_sum:
-                payload = self.payload
-                invoice.pay(payload)
-                if _messages:
-                    last_tx_ref = invoice.tx_refs.last()
-                    transaction = last_tx_ref.tx_ref
-                    messages.success(
-                        self.request,
-                        _('''The account was successfully sent.
-                             Wait for transaction {}
-                             confirmation.'''.format(transaction))
-                    )
+    def get_queryset(self):
+        queryset = super(PaymentListView, self).get_queryset()
+        qs = []
+        for symbol in ['btc', 'ltc', 'dash', 'doge', 'bcy']:
+            wallet_model = get_wallet_model(symbol)
+            if wallet_model:
+                wallets = wallet_model.objects.filter(user=self.request.user)
+                for wallet in wallets:
+                    for payment in wallet.payments.all():
+                        if self.request.user.has_perm('view_payment', payment):
+                            qs.append(payment.id)
             else:
-                if _messages:
-                    messages.error(
-                        self.request,
-                        _('''You do not have enough funds
-                             to pay your invoice.''')
-                    )
-            redirect(
-                reverse('wallets:invoice_detail', kwargs={'pk': invoice.pk})
-            )
-        else:
-            self.form_invalid(form)
-        return super(InvoicePayView, self).post(*args, **kwargs)
-
-    def dispatch(self, request, *args, **kwargs):
-        #invoice = get_object_or_404(Invoice, pk=self.kwargs['pk'])
-        return super(InvoicePayView, self).dispatch(request, *args, **kwargs)
-"""
+                return []
+        return queryset.filter(id__in=qs)

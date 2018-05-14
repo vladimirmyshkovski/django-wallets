@@ -16,7 +16,6 @@ class WithdrawForm(forms.Form):
 
     def clean_amount(self):
         data = self.cleaned_data['amount']
-        #Check date is greater than zero.
         if data <= 0:
             raise ValidationError(_('Amount must be greater than zero.'))
 
@@ -24,13 +23,10 @@ class WithdrawForm(forms.Form):
 
     def clean_address(self):
         data = self.cleaned_data['address']
-        #Check date length is greater than 10.
         if len(data) <= 10:
             raise ValidationError(_('Number of characters must ' +
                                     'be greater than 10.'))
 
-        #Check that the recipient's address is not
-        #equal to the sender's address
         if self.obj:
             if data == self.obj.address:
                 raise ValidationError(_('The recipient\'s address and the ' +
@@ -52,25 +48,3 @@ class WithdrawForm(forms.Form):
                 [to_satoshi(float(amount))]
             )
             return transaction
-
-"""
-class PayForm(forms.Form):
-    pass
-    '''
-    payload = forms.CharField(required=False)
-
-    def clean_payload(self):
-        JSON_data = self.cleaned_data['payload']
-        if JSON_data:
-            try:
-                json_data = json.loads(JSON_data)  # loads string as json
-                # validate json_data
-            except:
-                raise forms.ValidationError("Invalid data in payload field.")
-            #if json data not valid:
-                #raise forms.ValidationError("Invalid data in jsonfield")
-            return json.dumps(json_data)
-        else:
-            return JSON_data
-    '''
-"""
