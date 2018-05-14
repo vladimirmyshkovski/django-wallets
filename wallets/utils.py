@@ -9,8 +9,10 @@ from datetime import timedelta
 from django.utils import timezone
 from easy_cache import ecached
 from django.urls import reverse
+from django.conf import settings
 
 
+CONFIRMATIONS = settings.DJANGO_WALLETS_DEFAULT_CONFIRMATIONS
 env = environ.Env()
 logger = logging.getLogger(__name__)
 

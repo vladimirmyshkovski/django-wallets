@@ -161,7 +161,6 @@ class BaseWallet(TimeStampedModel, SoftDeletableModel):
     def set_webhook(self, to_addresses: List[str], transaction: str,
                     obj: object=None, invoice: object=None,
                     event: str='tx-confirmation') -> str:
-
         domain = env('DOMAIN_NAME', default='localhost')
         if obj:
             try:
