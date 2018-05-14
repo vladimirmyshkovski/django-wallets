@@ -183,6 +183,7 @@ class BaseWallet(TimeStampedModel, SoftDeletableModel):
             'invoice_id': invoice.id if invoice else None,
             'content_object': obj
         })
+        print('signature', signature)
         webhook = blockcypher.subscribe_to_address_webhook(
             callback_url='https://{}/wallets/webhook/{}/'.format(
                 domain, signature
