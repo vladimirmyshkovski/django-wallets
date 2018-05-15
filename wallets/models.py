@@ -28,7 +28,7 @@ from .utils import get_expires_date, from_satoshi, get_api_key
 from . import api
 
 
-env = environ.Path()
+env = environ.Env()
 logger = logging.getLogger(__name__)
 
 
