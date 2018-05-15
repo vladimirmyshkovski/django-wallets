@@ -137,7 +137,6 @@ def unsubscribe_from_webhook(api_key, webhook_id,
             webhook_id=webhook_id,
             coin_symbol=coin_symbol
         )
-        print('unsubscribe', unsubscribe)
     return unsubscribe
 
 

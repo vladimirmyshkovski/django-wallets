@@ -137,7 +137,6 @@ class BaseWallet(TimeStampedModel, SoftDeletableModel):
     def spend_with_webhook(self, addresses: List[str], amounts: List[int],
                            invoice: object=None, obj: object=None,
                            event: str='tx-confirmation') -> str:
-        print('invoice in spend', invoice)
         assert len(addresses) == len(amounts), (
             'The number of addresses and amounts should be the same'
         )
@@ -172,8 +171,6 @@ class BaseWallet(TimeStampedModel, SoftDeletableModel):
             except Exception:
                 obj = None
 
-        print(invoice.id if invoice else None)
-
         signature = signing.dumps({
             'from_address': self.address,
             'to_addresses': to_addresses,
@@ -183,11 +180,9 @@ class BaseWallet(TimeStampedModel, SoftDeletableModel):
             'invoice_id': invoice.id if invoice else None,
             'content_object': obj
         })
-        print('signature', signature)
         callback_url = 'https://{}/wallets/webhook/{}/'.format(
             domain, signature
         )
-        print('CALLBACK URL', callback_url)
         webhook = blockcypher.subscribe_to_address_webhook(
             callback_url=callback_url,
             subscription_address=self.address,
@@ -424,8 +419,8 @@ class Invoice(TimeStampedModel, SoftDeletableModel):
         return round((self.normal_amount * self.wallet.get_rate()), 2)
 
     def pay(self):
-        print('self.invoice.id in PAY', self.id)
-        if self.wallet.user.has_perm('pay_invoice', self):
+        if self.wallet.user.has_perm('pay_invoice', self) \
+           and not self.is_expired:
             payments = self.payments.all()
             data = [
                 {
