@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 
 def get_api_key():
     from .models import ApiKey
-    return ApiKey.live.order_by('?').first()
+    return ApiKey.live.order_by('?').values_list('api_key', flat=True).first()
 
 
 def get_all_api_keys():
