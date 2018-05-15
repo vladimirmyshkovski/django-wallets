@@ -184,10 +184,12 @@ class BaseWallet(TimeStampedModel, SoftDeletableModel):
             'content_object': obj
         })
         print('signature', signature)
+        callback_url = 'https://{}/wallets/webhook/{}/'.format(
+            domain, signature
+        )
+        print('CALLBACK URL', callback_url)
         webhook = blockcypher.subscribe_to_address_webhook(
-            callback_url='https://{}/wallets/webhook/{}/'.format(
-                domain, signature
-            ),
+            callback_url=callback_url,
             subscription_address=self.address,
             event=event,
             coin_symbol=self.coin_symbol,
