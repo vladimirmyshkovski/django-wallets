@@ -101,7 +101,7 @@ def get_aggregate_invoices(user):
                 payments_ids.extend(q)
     payments = Payment.objects.filter(
         id__in=payments_ids,
-        created=timezone.now()-timedelta(days=7)
+        created__gte=timezone.now()-timedelta(days=7)
         ).only('modified', 'amount').order_by('modified')
     aggregate_payments = {
         k: round(sum(float(x.usd_amount) for x in g), 2)
