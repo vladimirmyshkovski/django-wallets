@@ -188,7 +188,8 @@ class WalletsWebhookView(View):
                 )
         except Exception:
             pass
-        return JsonResponse({}, status=200)
+        finally:
+            return JsonResponse({}, status=200)
 
     @method_decorator(csrf_exempt)
     def dispatch(self, request, *args, **kwargs):

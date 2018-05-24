@@ -7,7 +7,6 @@ import blockcypher
 from model_utils.models import TimeStampedModel, SoftDeletableModel
 from guardian.shortcuts import assign_perm
 from easy_cache import ecached_property
-import environ
 
 from django.db import models
 from django.conf import settings
@@ -27,8 +26,6 @@ from .managers import ApiKeyManager
 from .utils import get_expires_date, from_satoshi, get_api_key
 from . import api
 
-
-env = environ.Env()
 logger = logging.getLogger(__name__)
 
 
@@ -160,7 +157,7 @@ class BaseWallet(TimeStampedModel, SoftDeletableModel):
     def set_webhook(self, to_addresses: List[str], transaction: str,
                     obj: object=None, invoice: object=None,
                     event: str='tx-confirmation') -> str:
-        domain = env('DOMAIN_NAME', default='localhost')
+        domain = settings.DOMAIN_NAME
         if obj:
             try:
                 obj = signing.dumps({

@@ -7,7 +7,6 @@ import blockcypher
 from model_utils.models import TimeStampedModel, SoftDeletableModel
 from guardian.shortcuts import assign_perm
 from easy_cache import ecached_property
-import environ
 
 from django.db import models
 from django.conf import settings
@@ -27,8 +26,6 @@ from .managers import ApiKeyManager
 from .utils import get_expires_date, from_satoshi, get_api_key
 from . import api
 
-
-env = environ.Path()
 logger = logging.getLogger(__name__)
 
 
@@ -137,7 +134,6 @@ class BaseWallet(TimeStampedModel, SoftDeletableModel):
     def spend_with_webhook(self, addresses: List[str], amounts: List[int],
                            invoice: object=None, obj: object=None,
                            event: str='tx-confirmation') -> str:
-        print('invoice in spend', invoice)
         assert len(addresses) == len(amounts), (
             'The number of addresses and amounts should be the same'
         )
@@ -161,7 +157,7 @@ class BaseWallet(TimeStampedModel, SoftDeletableModel):
     def set_webhook(self, to_addresses: List[str], transaction: str,
                     obj: object=None, invoice: object=None,
                     event: str='tx-confirmation') -> str:
-        domain = env('DOMAIN_NAME', default='localhost')
+        domain = settings.DOMAIN_NAME
         if obj:
             try:
                 obj = signing.dumps({
@@ -172,8 +168,6 @@ class BaseWallet(TimeStampedModel, SoftDeletableModel):
             except Exception:
                 obj = None
 
-        print(invoice.id if invoice else None)
-
         signature = signing.dumps({
             'from_address': self.address,
             'to_addresses': to_addresses,
@@ -183,10 +177,11 @@ class BaseWallet(TimeStampedModel, SoftDeletableModel):
             'invoice_id': invoice.id if invoice else None,
             'content_object': obj
         })
+        callback_url = 'https://{}/wallets/webhook/{}/'.format(
+            domain, signature
+        )
         webhook = blockcypher.subscribe_to_address_webhook(
-            callback_url='https://{}/wallets/webhook/{}/'.format(
-                domain, signature
-            ),
+            callback_url=callback_url,
             subscription_address=self.address,
             event=event,
             coin_symbol=self.coin_symbol,
@@ -421,8 +416,8 @@ class Invoice(TimeStampedModel, SoftDeletableModel):
         return round((self.normal_amount * self.wallet.get_rate()), 2)
 
     def pay(self):
-        print('self.invoice.id in PAY', self.id)
-        if self.wallet.user.has_perm('pay_invoice', self):
+        if self.wallet.user.has_perm('pay_invoice', self) \
+           and not self.is_expired:
             payments = self.payments.all()
             data = [
                 {

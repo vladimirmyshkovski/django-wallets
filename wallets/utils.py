@@ -1,4 +1,4 @@
-import environ
+from django.conf import settings
 import logging
 import requests
 import blockcypher
@@ -9,11 +9,9 @@ from datetime import timedelta
 from django.utils import timezone
 from easy_cache import ecached
 from django.urls import reverse
-from django.conf import settings
 
 
 CONFIRMATIONS = settings.DJANGO_WALLETS_DEFAULT_CONFIRMATIONS
-env = environ.Env()
 logger = logging.getLogger(__name__)
 
 
@@ -56,7 +54,7 @@ def from_satoshi(amount):
 def set_webhook(from_address, to_address, transaction_id,
                 coin_symbol, event='tx-confirmation'):
 
-    domain = env('DOMAIN_NAME')
+    domain = settings.DOMAIN_NAME
 
     signature = signing.dumps({
         'from_address': from_address,

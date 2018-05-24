@@ -1,4 +1,4 @@
-import environ
+from django.conf import settings
 import logging
 import requests
 import blockcypher
@@ -9,17 +9,15 @@ from datetime import timedelta
 from django.utils import timezone
 from easy_cache import ecached
 from django.urls import reverse
-from django.conf import settings
 
 
 CONFIRMATIONS = settings.DJANGO_WALLETS_DEFAULT_CONFIRMATIONS
-env = environ.Env()
 logger = logging.getLogger(__name__)
 
 
 def get_api_key():
     from .models import ApiKey
-    return ApiKey.live.order_by('?').first()
+    return ApiKey.live.order_by('?').values_list('api_key', flat=True).first()
 
 
 def get_all_api_keys():
@@ -56,7 +54,7 @@ def from_satoshi(amount):
 def set_webhook(from_address, to_address, transaction_id,
                 coin_symbol, event='tx-confirmation'):
 
-    domain = env('DOMAIN_NAME')
+    domain = settings.DOMAIN_NAME
 
     signature = signing.dumps({
         'from_address': from_address,
@@ -124,16 +122,17 @@ def extract_webhook_id(signature, coin_symbol):
                 return {
                     'api_key': api_key,
                     'webhook_id': webhook_id,
+                    'coin_symbol': coin_symbol,
                     'can_unsubscribe': can_unsubscribe
                 }
 
 
 def unsubscribe_from_webhook(api_key, webhook_id,
-                             can_unsubscribe, coin_symbol):
+                             coin_symbol, can_unsubscribe):
     if can_unsubscribe:
         unsubscribe = blockcypher.unsubscribe_from_webhook(
-            api_key,
-            webhook_id,
+            api_key=api_key,
+            webhook_id=webhook_id,
             coin_symbol=coin_symbol
         )
     return unsubscribe
