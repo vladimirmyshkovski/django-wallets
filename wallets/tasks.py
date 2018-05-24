@@ -10,7 +10,6 @@ from .signals import invoice_is_paid
 
 @periodic_task(run_every=timedelta(seconds=settings.CHECK_EVERY_SECONDS))
 def check_transaction_confirmations():
-    print('hello')
     if settings.CHECK_TRANSACTION_CONFIRMATIONS:
         invoices = Invoice.objects.filter(is_paid=False, tx_ref__isnull=False)
         for invoice in invoices:

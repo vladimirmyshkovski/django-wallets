@@ -428,8 +428,8 @@ class Invoice(TimeStampedModel, SoftDeletableModel):
             tx_ref = self.wallet.spend(
                 addresses=[payment['address'] for payment in data],
                 amounts=[payment['amount'] for payment in data],
-                invoice=self,
-                obj=self.content_object
+                #invoice=self,
+                #obj=self.content_object
             )
             self.tx_ref = tx_ref
             self.save()
