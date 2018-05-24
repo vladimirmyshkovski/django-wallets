@@ -15,7 +15,7 @@ def check_transaction_confirmations():
         for invoice in invoices:
             if invoice.tx_ref:
                 details = blockcypher.get_transaction_details(
-                    tx_ref=invoice.tx_ref,
+                    invoice.tx_ref,
                     coin_symbol=invoice.wallet.coin_symbol
                 )
                 if details['confirmations'] >= settings.DEFAULT_CONFIRMATIONS:
