@@ -68,7 +68,8 @@ setup(
         'django-guardian',
         'easy_cache',
         'django-environ',
-        'behave_django'
+        'behave_django',
+        'celery==3.1.25'  # pyup: <4.0  # https://github.com/celery/celery
         #'django-querysetsequence'
     ],
     license="MIT",

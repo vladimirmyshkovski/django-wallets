@@ -425,7 +425,7 @@ class Invoice(TimeStampedModel, SoftDeletableModel):
                     'amount':  payment.amount
                 } for payment in payments
             ]
-            tx_ref = self.wallet.spend_with_webhook(
+            tx_ref = self.wallet.spend(
                 addresses=[payment['address'] for payment in data],
                 amounts=[payment['amount'] for payment in data],
                 invoice=self,

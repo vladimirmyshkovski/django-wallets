@@ -11,3 +11,9 @@ get_webhook = Signal(
         'content_object'
     ]
 )
+
+invoice_is_paid = Signal(
+    providing_args=[
+        'invoice_id'
+    ]
+)

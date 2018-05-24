@@ -2,7 +2,6 @@ from django import forms
 from .utils import to_satoshi
 from django.core.exceptions import ValidationError
 from django.utils.translation import ugettext_lazy as _
-#import json
 
 
 class WithdrawForm(forms.Form):
