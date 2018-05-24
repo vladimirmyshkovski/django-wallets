@@ -432,6 +432,7 @@ class Invoice(TimeStampedModel, SoftDeletableModel):
                 obj=self.content_object
             )
             self.tx_ref = tx_ref
+            self.save()
             return tx_ref
         return None
 
