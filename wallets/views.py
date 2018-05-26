@@ -358,9 +358,14 @@ class PaymentListView(LoginRequiredMixin, ListView):
             if wallet_model:
                 wallets = wallet_model.objects.filter(user=self.request.user)
                 for wallet in wallets:
-                    for payment in wallet.payments.all():
-                        if self.request.user.has_perm('view_payment', payment):
-                            qs.append(payment.id)
-            else:
-                return []
+                    qs.extend(
+                        wallet.payments.filter(
+                            invoice__is_paid=True
+                        ).values_list('id', flat=True)
+                    )
+                    #for payment in wallet.payments.all():
+                        #if self.request.user.has_perm('view_payment', payment):
+                        #    qs.append(payment.id)
+            #else:
+            #    return []
         return queryset.filter(id__in=qs)
