@@ -365,6 +365,8 @@ class Invoice(TimeStampedModel, SoftDeletableModel):
     is_paid = models.BooleanField(default=False)
     expires = models.DateTimeField(default=get_expires_date)
 
+    not_removed = QueryManager(is_removed=False)
+
     class Meta:
         ordering = ['id']
         permissions = (
