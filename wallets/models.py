@@ -41,7 +41,7 @@ class ApiKey(TimeStampedModel, SoftDeletableModel):
     )
 
     live = ApiKeyManager()
-    not_removed = QueryManager(is_removed=False)
+    removed = QueryManager(is_removed=True)
 
     @ecached_property('is_expire:{self.id}', 60)
     def is_expire(self):
@@ -96,7 +96,7 @@ class BaseWallet(TimeStampedModel, SoftDeletableModel):
         object_id_field='wallet_id',
     )
 
-    not_removed = QueryManager(is_removed=False)
+    removed = QueryManager(is_removed=True)
 
     class Meta:
         abstract = True
@@ -365,7 +365,7 @@ class Invoice(TimeStampedModel, SoftDeletableModel):
     is_paid = models.BooleanField(default=False)
     expires = models.DateTimeField(default=get_expires_date)
 
-    not_removed = QueryManager(is_removed=False)
+    removed = QueryManager(is_removed=True)
 
     class Meta:
         ordering = ['id']
@@ -514,7 +514,7 @@ class Payment(TimeStampedModel, SoftDeletableModel):
 
     purpose = models.CharField(max_length=255)
 
-    not_removed = QueryManager(is_removed=False)
+    removed = QueryManager(is_removed=True)
 
     class Meta:
         ordering = ['id']
