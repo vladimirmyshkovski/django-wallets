@@ -854,7 +854,7 @@ class TestBcy(TestCase):
     '''
     def test_rate(self):
         rate = self.bcy.rate
-        self.assertEqual(rate, 0)
+        self.assertEqual(rate, 150)
 
 
 class TestInvoice(TestCase):

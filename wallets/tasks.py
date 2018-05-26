@@ -30,5 +30,9 @@ def check_transaction_confirmations():
                             sender=Invoice,
                             invoice_id=invoice.id
                         )
+                        logger.info('Invoice #{} successfully confirmed'.format(
+                            invoice.id
+                            )
+                        )
                 except Exception as e:
                     logger.exception('{}'.format(e))

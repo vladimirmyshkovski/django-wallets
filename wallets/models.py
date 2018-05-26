@@ -323,7 +323,7 @@ class Bcy(BaseWallet):
 
     @property
     def rate(self):
-        return 0
+        return 150  # For testing and debug
 
 
 @python_2_unicode_compatible
