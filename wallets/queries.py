@@ -108,10 +108,13 @@ def get_aggregate_invoices(user):
         if wallet:
             wallets = wallet.objects.filter(user=user)
             q = list(chain(*[
-                w.payments.values_list('id', flat=True) for w in wallets
+                w.payments.filter(
+                    invoice__is_paid=True
+                ).values_list('id', flat=True) for w in wallets
             ]))
             if q:
                 payments_ids.extend(q)
+
     payments = Payment.objects.filter(
         id__in=payments_ids,
         created__gte=timezone.now()-timedelta(days=7)
