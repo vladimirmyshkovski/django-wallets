@@ -102,7 +102,7 @@ def get_aggregate_invoices(user):
     payments = Payment.objects.filter(
         id__in=payments_ids,
         created__gte=timezone.now()-timedelta(days=7)
-        ).only('modified', 'amount').select_related('invoice').order_by('modified')
+        ).only('modified', 'amount', 'invoice').order_by('modified')
     aggregate_payments = {
         k: round(sum(float(x.invoice.usd_amount) for x in g), 2)
         for k, g in groupby(
