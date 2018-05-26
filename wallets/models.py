@@ -5,7 +5,7 @@ import requests
 import blockcypher
 
 from model_utils.models import TimeStampedModel, SoftDeletableModel
-from model_utils.managers import QueryManager
+from model_utils.managers import QueryManager, SoftDeletableManager
 from guardian.shortcuts import assign_perm
 from easy_cache import ecached_property
 
@@ -41,6 +41,8 @@ class ApiKey(TimeStampedModel, SoftDeletableModel):
     )
 
     live = ApiKeyManager()
+
+    objects = SoftDeletableManager()
     removed = QueryManager(is_removed=True)
 
     @ecached_property('is_expire:{self.id}', 60)
@@ -96,6 +98,7 @@ class BaseWallet(TimeStampedModel, SoftDeletableModel):
         object_id_field='wallet_id',
     )
 
+    objects = SoftDeletableManager()
     removed = QueryManager(is_removed=True)
 
     class Meta:
@@ -363,6 +366,7 @@ class Invoice(TimeStampedModel, SoftDeletableModel):
     is_paid = models.BooleanField(default=False)
     expires = models.DateTimeField(default=get_expires_date)
 
+    objects = SoftDeletableManager()
     removed = QueryManager(is_removed=True)
 
     class Meta:
@@ -512,6 +516,7 @@ class Payment(TimeStampedModel, SoftDeletableModel):
 
     purpose = models.CharField(max_length=255)
 
+    objects = SoftDeletableManager()
     removed = QueryManager(is_removed=True)
 
     class Meta:
