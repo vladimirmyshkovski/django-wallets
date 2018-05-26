@@ -5,6 +5,7 @@ import requests
 import blockcypher
 
 from model_utils.models import TimeStampedModel, SoftDeletableModel
+from model_utils.managers import QueryManager
 from guardian.shortcuts import assign_perm
 from easy_cache import ecached_property
 
@@ -26,6 +27,7 @@ from .managers import ApiKeyManager
 from .utils import get_expires_date, from_satoshi, get_api_key
 from . import api
 
+
 logger = logging.getLogger(__name__)
 
 
@@ -39,6 +41,7 @@ class ApiKey(TimeStampedModel, SoftDeletableModel):
     )
 
     live = ApiKeyManager()
+    not_removed = QueryManager(is_removed=False)
 
     @ecached_property('is_expire:{self.id}', 60)
     def is_expire(self):
@@ -92,6 +95,8 @@ class BaseWallet(TimeStampedModel, SoftDeletableModel):
         content_type_field='wallet_type',
         object_id_field='wallet_id',
     )
+
+    not_removed = QueryManager(is_removed=False)
 
     class Meta:
         abstract = True
@@ -506,6 +511,8 @@ class Payment(TimeStampedModel, SoftDeletableModel):
     content_object = GenericForeignKey('content_type', 'object_id')
 
     purpose = models.CharField(max_length=255)
+
+    not_removed = QueryManager(is_removed=False)
 
     class Meta:
         ordering = ['id']
