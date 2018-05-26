@@ -852,9 +852,9 @@ class TestBcy(TestCase):
             type(1)
         )
     '''
-    def test_rate(self):
-        rate = self.bcy.rate
-        self.assertEqual(rate, 150)
+    #def test_rate(self):
+    #    rate = self.bcy.rate
+    #    self.assertEqual(rate, 150)
 
 
 class TestInvoice(TestCase):

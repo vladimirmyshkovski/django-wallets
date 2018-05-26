@@ -290,6 +290,8 @@ class BaseWallet(TimeStampedModel, SoftDeletableModel):
     @classmethod
     def get_rate(cls):
         coin_name = cls.get_coin_name()
+        if coin_name == 'blockcypher':
+            return 150  # for tests and debug
         try:
             response = requests.get(
                 'https://api.coinmarketcap.com/v1/ticker/{}/'.format(
@@ -325,10 +327,6 @@ class Dash(BaseWallet):
 @python_2_unicode_compatible
 class Bcy(BaseWallet):
     pass
-
-    @property
-    def rate(self):
-        return 150  # For testing and debug
 
 
 @python_2_unicode_compatible
