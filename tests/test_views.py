@@ -765,7 +765,10 @@ class TestPaymentListView(TestCase):
     def setUp(self):
         self.user = factories.UserFactory()
         self.btc = factories.BtcFactory(user=self.user)
-        self.btc_invoice = factories.BtcInvoiceFactory(wallet=self.btc)
+        self.btc_invoice = factories.BtcInvoiceFactory(
+            wallet=self.btc,
+            is_paid=True
+        )
         self.payment = factories.PaymentBtcInvoiceFactory(
             wallet=self.btc,
             invoice=self.btc_invoice
@@ -808,6 +811,7 @@ class TestPaymentListView(TestCase):
                 wallet=self.btc
             )
             assign_perm('view_payment', self.user, payment)
+        print(self.btc.payments.all())
         self.client.login(username=self.user.username, password='password')
         resp = self.get(self.reverse('wallets:payment_list'))
         self.response_200(resp)

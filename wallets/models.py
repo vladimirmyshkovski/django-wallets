@@ -536,12 +536,12 @@ class Payment(TimeStampedModel, SoftDeletableModel):
     @property
     def text(self):
         return 'User {user} paid {amount} \
-                {symbol} for {purpose} ({obj})'.format(
+                {symbol} for {purpose}'.format(
             user=self.invoice.wallet.user,
             amount=self.amount,
             symbol=self.invoice.wallet.coin_symbol.upper(),
             purpose=self.purpose,
-            obj=self.content_object.__str__()
+            #obj=self.content_object.__str__()
             )
 
     @property
