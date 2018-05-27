@@ -60,12 +60,12 @@ def get_user_total_earned_usd(user):
                         #rate = payment.wallet.__class__.get_rate()
                         #amount = round(payment.amount * float(rate), 2)
                         total_earned_usd += payment.usd_amount
-    return total_earned_usd
+    return round(total_earned_usd, 2)
 
 
 @ecached('get_user_total_paid_usd_{user}', 300)
 def get_user_total_paid_usd(user):
-    total_paid = 0
+    total_paid_usd = 0
     for symbol in ['btc', 'ltc', 'dash', 'doge', 'bcy']:
         wallet_model = get_wallet_model(symbol)
         if wallet_model:
@@ -73,7 +73,7 @@ def get_user_total_paid_usd(user):
             for wallet in wallets:
                 for invoice in wallet.invoices.filter(is_paid=True):
                     total_paid += invoice.usd_amount
-    return total_paid
+    return round(total_paid_usd, 2)
 
 
 @ecached('get_user_wallet_balance_{user}_{symbol}', 300)
@@ -97,7 +97,7 @@ def get_user_total_balance_usd(user):
     balance = 0
     for symbol in ['btc', 'ltc', 'dash', 'doge', 'bcy']:
         balance += float(get_user_wallet_balance_usd(user, symbol))
-    return round(balance, 3)
+    return round(balance, 2)
 
 
 @ecached('get_aggregate_invoices_{user}', 3600)
