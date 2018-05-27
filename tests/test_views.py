@@ -819,7 +819,6 @@ class TestPaymentListView(TestCase):
             len(self.get_context('payment_list')),
             10
         )
-        self.assertTrue(self.get_context('is_paginated'))
 
     def test_second_page_with_pagination(self):
         for i in range(25):

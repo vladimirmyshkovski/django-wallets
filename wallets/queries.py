@@ -72,7 +72,7 @@ def get_user_total_paid_usd(user):
             wallets = wallet_model.objects.filter(user=user)
             for wallet in wallets:
                 for invoice in wallet.invoices.filter(is_paid=True):
-                    total_paid += invoice.usd_amount
+                    total_paid_usd += invoice.usd_amount
     return round(total_paid_usd, 2)
 
 
