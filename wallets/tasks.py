@@ -15,9 +15,7 @@ def check_transaction_confirmations():
     if settings.CHECK_TRANSACTION_CONFIRMATIONS:
         invoices = Invoice.objects.filter(is_paid=False, tx_ref__isnull=False)
         for invoice in invoices:
-            if invoice.is_expired:
-                invoice.delete()
-            if invoice.tx_ref:
+            if invoice.tx_ref and not invoice.is_expired:
                 try:
                     details = blockcypher.get_transaction_details(
                         invoice.tx_ref,
