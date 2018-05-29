@@ -302,7 +302,7 @@ class BaseWallet(TimeStampedModel, SoftDeletableModel):
                 )
             )
             json_response = response.json()
-            return round(float(json_response[0]['price_usd']), 2)
+            return float(json_response[0]['price_usd'])
         except Exception:
             return 0
 
