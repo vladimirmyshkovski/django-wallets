@@ -15,14 +15,15 @@ def check_transaction_confirmations():
     if settings.CHECK_TRANSACTION_CONFIRMATIONS:
         invoices = Invoice.objects.filter(is_paid=False, tx_ref__isnull=False)
         for invoice in invoices:
-            print(invoice.tx_ref and not invoice.is_expired)
             if invoice.tx_ref and not invoice.is_expired:
                 try:
                     details = blockcypher.get_transaction_details(
                         invoice.tx_ref,
                         invoice.wallet.coin_symbol
                     )
-                    logger.info('Confirmatinos: {}'.format(
+                    logger.info('Confirmatinos of transaction {} ({}): {}'.format(
+                        invoice.tx_ref,
+                        invoice.wallet.coin_symbol,
                         details['confirmations']
                         )
                     )
