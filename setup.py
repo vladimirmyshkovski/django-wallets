@@ -69,7 +69,7 @@ setup(
         'easy_cache',
         'django-environ',
         'behave_django',
-        'celery==3.1.25'  # pyup: <4.0  # https://github.com/celery/celery
+        'celery==5.2.2'  # pyup: <4.0  # https://github.com/celery/celery
         #'django-querysetsequence'
     ],
     license="MIT",
